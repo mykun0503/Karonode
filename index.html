@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Karotter App</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; }
+        .success { color: green; font-weight: bold; }
+        /* アプリのようなウィンドウのスタイル */
+        .timeline { 
+            position: absolute; top: 100px; left: 50px; width: 450px; height: 600px; 
+            background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d1d5db;
+        }
+        .timeline-header { background: #f97316; color: white; padding: 12px; cursor: move; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+        .timeline-header h2 { margin: 0; font-size: 1.1rem; }
+        #posts { flex: 1; overflow-y: auto; padding: 0 15px; }
+        .post { border-bottom: 1px solid #f3f4f6; padding: 15px 0; }
+        .post-user { font-weight: bold; color: #f97316; margin-bottom: 5px; }
+        .post-content { line-height: 1.4; white-space: pre-wrap; }
+        .post-date { color: #888; font-size: 0.8rem; margin-top: 5px; }
+        .controls { padding: 10px 15px; background: #fffaf7; border-bottom: 1px solid #fee2e2; display: flex; align-items: center; gap: 1rem; }
+        button { padding: 5px 15px; cursor: pointer; }
+        .auto-refresh-label { font-size: 0.9rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Karotter App</h1>
+    <p class="success">ログインに成功しました。コンテンツはここに表示されます。</p>
+
+    <div id="timelineWindow" class="timeline">
+        <div class="timeline-header" id="dragHandle">
+            <h2>最新のタイムライン</h2>
+            <span style="font-size: 0.8rem; opacity: 0.8;">ここをドラッグして移動</span>
+        </div>
+        <div class="controls">
+            <button id="refreshBtn">更新</button>
+            <label class="auto-refresh-label">
+                <input type="checkbox" id="autoRefreshCheck"> 10秒ごとに自動更新
+            </label>
+        </div>
+        <div id="posts">読み込み中...</div>
+    </div>
+
+    <script>
+        let autoRefreshInterval = null;
+
+        async function loadTimeline() {
+            const postsContainer = document.getElementById('posts');
+            try {
+                const response = await fetch('/api/timeline');
+                const data = await response.json();
+                console.log('API Response:', data); // デバッグ用：構造を確認するためにコンソールに出力
+                
+                postsContainer.innerHTML = '';
+
+                // レスポンスが配列、もしくは data.posts が配列である場合に対応
+                const posts = Array.isArray(data) ? data : (data.posts || []);
+
+                if (posts.length > 0) {
+                    posts.forEach(post => {
+                        // ユーザー情報の参照先を柔軟にチェック
+                        const user = post.user || post.author || post;
+                        const displayName = user.displayName || 'Unknown';
+                        const username = user.username || 'unknown';
+
+                        const postEl = document.createElement('div');
+                        postEl.className = 'post';
+                        postEl.innerHTML = `
+                            <div class="post-user">
+                                ${displayName} 
+                                <span style="color: #666; font-weight: normal; font-size: 0.9em;">@${username}</span>
+                            </div>
+                            <div class="post-content">${post.content || ''}</div>
+                            <div class="post-date">${new Date(post.createdAt).toLocaleString()}</div>
+                        `;
+                        postsContainer.appendChild(postEl);
+                    });
+                } else {
+                    postsContainer.innerHTML = '投稿が見つかりませんでした。';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                postsContainer.innerText = 'タイムラインの取得に失敗しました。';
+            }
+        }
+
+        // 手動更新ボタン
+        document.getElementById('refreshBtn').addEventListener('click', loadTimeline);
+
+        // 10秒ごとの自動更新処理
+        setInterval(() => {
+            const isEnabled = document.getElementById('autoRefreshCheck').checked;
+            if (isEnabled) {
+                console.log('自動更新を実行中...');
+                loadTimeline();
+            }
+        }, 10000);
+
+        // ドラッグ移動のロジック
+        const dragHandle = document.getElementById('dragHandle');
+        const timelineWindow = document.getElementById('timelineWindow');
+        let isDragging = false;
+        let offset = { x: 0, y: 0 };
+
+        dragHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            // ウィンドウの左上とマウス位置の差分を記録
+            offset.x = e.clientX - timelineWindow.offsetLeft;
+            offset.y = e.clientY - timelineWindow.offsetTop;
+            dragHandle.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            
+            // 新しい位置を計算
+            let newX = e.clientX - offset.x;
+            let newY = e.clientY - offset.y;
+            
+            // 画面外にはみ出さないように制限（任意）
+            timelineWindow.style.left = `${newX}px`;
+            timelineWindow.style.top = `${newY}px`;
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            dragHandle.style.cursor = 'move';
+        });
+
+        loadTimeline();
+    </script>
+</body>
+</html>
