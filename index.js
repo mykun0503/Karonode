@@ -135,6 +135,27 @@ app.get('/api/users/:username', async (req, res) => {
 });
 
 /**
+ * 特定ユーザーの投稿取得用API
+ */
+app.get('/api/users/:userId/posts', async (req, res) => {
+  try {
+    let token = null;
+    if (fs.existsSync(ACCOUNT_FILE)) {
+      const account = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf8'));
+      const loginData = await auth.login(account.username, account.password);
+      token = loginData.accessToken;
+    }
+    const axios = require('axios');
+    const response = await axios.get(`https://api.karotter.com/api/users/${req.params.userId}/posts?page=1&limit=20`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * 通知取得用API
  */
 app.get('/api/notifications', async (req, res) => {
@@ -175,6 +196,48 @@ app.post('/api/follow/:userId', async (req, res) => {
 });
 
 /**
+ * 特定の投稿を取得するAPI
+ */
+app.get('/api/posts/:id', async (req, res) => {
+  try {
+    let token = null;
+    if (fs.existsSync(ACCOUNT_FILE)) {
+      const account = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf8'));
+      const loginData = await auth.login(account.username, account.password);
+      token = loginData.accessToken;
+    }
+    const axios = require('axios');
+    const response = await axios.get(`https://api.karotter.com/api/posts/${req.params.id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * 投稿の返信を取得するAPI
+ */
+app.get('/api/posts/:id/replies', async (req, res) => {
+  try {
+    let token = null;
+    if (fs.existsSync(ACCOUNT_FILE)) {
+      const account = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf8'));
+      const loginData = await auth.login(account.username, account.password);
+      token = loginData.accessToken;
+    }
+    const axios = require('axios');
+    const response = await axios.get(`https://api.karotter.com/api/posts/${req.params.id}/replies`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * 新規投稿・引用投稿用API
  */
 app.post('/api/posts', async (req, res) => {
@@ -183,7 +246,7 @@ app.post('/api/posts', async (req, res) => {
   }
 
   try {
-    const { content, quotedPostId } = req.body;
+    const { content, quotedPostId, parentId } = req.body;
     const account = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf8'));
     const loginData = await auth.login(account.username, account.password);
     const token = loginData.accessToken;
@@ -192,6 +255,9 @@ app.post('/api/posts', async (req, res) => {
     const payload = { content };
     if (quotedPostId) {
       payload.quotedPostId = quotedPostId;
+    }
+    if (parentId) {
+      payload.parentId = parentId;
     }
 
     const axios = require('axios');

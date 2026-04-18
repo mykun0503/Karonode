@@ -1,6 +1,6 @@
 // auth.js の auth オブジェクトを利用するように変更
 
-async function createPost(content, quotedPostId = null) {
+async function createPost(content, quotedPostId = null, parentId = null) {
     const csrfToken = await auth.fetchCsrfToken();
     const deviceId = auth.getDeviceId();
 
@@ -12,7 +12,7 @@ async function createPost(content, quotedPostId = null) {
             'x-device-id': deviceId,
             'x-client-type': 'web'
         },
-        body: JSON.stringify({ content, quotedPostId })
+        body: JSON.stringify({ content, quotedPostId, parentId })
     });
     return await response.json();
 }
