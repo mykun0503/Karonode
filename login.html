@@ -13,11 +13,32 @@
     </style>
 </head>
 <body>
-    <form action="/login" method="POST">
+    <form id="loginForm">
         <h2>Karotter Login</h2>
         <div><label>Username</label><input type="text" name="username" required></div>
         <div><label>Password</label><input type="password" name="password" required></div>
         <button type="submit">ログイン</button>
     </form>
+
+    <script src="/js/auth.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = e.target.username.value;
+            const password = e.target.password.value;
+
+            try {
+                const result = await auth.login(username, password);
+                if (result.error) {
+                    alert('ログイン失敗: ' + result.error);
+                } else {
+                    // ログイン成功時、メインページへ遷移
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                alert('通信エラーが発生しました');
+            }
+        });
+    </script>
 </body>
 </html>

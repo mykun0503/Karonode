@@ -4,34 +4,150 @@
     <meta charset="UTF-8">
     <title>Karotter App</title>
     <style>
-        body { font-family: sans-serif; padding: 2rem; }
+        body { font-family: sans-serif; margin: 0; overflow: hidden; background: #000; }
         .success { color: green; font-weight: bold; }
+
+        /* タスクバースタイル */
+        .taskbar {
+            position: fixed; top: 0; left: 0; right: 0; height: 40px;
+            background: #1C84F5; color: white; display: flex; align-items: center;
+            padding: 0 15px; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+        .taskbar-left { flex: 1; }
+        .taskbar-center { flex: 1; text-align: center; font-weight: bold; }
+        .taskbar-right { flex: 1; text-align: right; }
+
+        /* サイドタスクバースタイル */
+        .side-taskbar {
+            position: fixed; top: 40px; left: 0; bottom: 0; width: 160px;
+            background: #2d3748; color: white; z-index: 999;
+            padding: 15px 10px; display: flex; flex-direction: column; gap: 8px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+        }
+
+        /* デスクトップエリア（壁紙が表示される領域） */
+        .desktop {
+            position: fixed;
+            top: 40px;
+            left: 160px;
+            right: 0;
+            bottom: 0;
+            background-image: url('/wallpaper/default.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            z-index: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            align-content: flex-start;
+            gap: 25px;
+        }
+
+        /* デスクトップショートカットのスタイル */
+        .shortcut {
+            width: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            color: white;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+            transition: transform 0.1s;
+        }
+        .shortcut:hover { transform: scale(1.05); }
+        .shortcut-icon {
+            width: 54px; height: 54px;
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 6px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .shortcut-label { font-size: 0.8rem; font-weight: bold; text-align: center; pointer-events: none; }
+
+        .taskbar-item {
+            background: rgba(255,255,255,0.1); border: none; color: white;
+            padding: 10px 12px; border-radius: 6px; cursor: pointer;
+            text-align: left; width: 100%; font-size: 0.85rem;
+            white-space: nowrap; transition: background 0.2s; overflow: hidden; text-overflow: ellipsis;
+        }
+        .taskbar-item:hover { background: rgba(255,255,255,0.2); }
+
         /* アプリのようなウィンドウのスタイル */
-        .timeline { 
-            position: absolute; top: 100px; left: 50px; width: 450px; height: 600px; 
+        .timeline, .detail-window, .profile-window, .notification-window, .compose-window { 
+            position: absolute; top: 60px; left: 180px; width: 450px; height: 600px; 
             background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d1d5db;
+            z-index: 10;
         }
-        .timeline-header { background: #f97316; color: white; padding: 12px; cursor: move; user-select: none; display: flex; justify-content: space-between; align-items: center; }
-        .timeline-header h2 { margin: 0; font-size: 1.1rem; }
+        .detail-window, .profile-window, .notification-window, .compose-window { height: auto; max-height: 500px; display: none; width: 400px; }
+        .detail-window { top: 150px; left: 550px; z-index: 20; }
+        .notification-window { top: 50px; left: 600px; z-index: 40; width: 350px; }
+        .profile-window { top: 200px; left: 600px; z-index: 30; }
+        .window-header { background: #1C84F5; color: white; padding: 12px; cursor: move; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+        .window-header h2 { margin: 0; font-size: 1.1rem; }
         #posts { flex: 1; overflow-y: auto; padding: 0 15px; }
-        .post { border-bottom: 1px solid #f3f4f6; padding: 15px 0; }
-        .post-user { font-weight: bold; color: #f97316; margin-bottom: 5px; }
+        .post { border-bottom: 1px solid #f3f4f6; padding: 15px 0; cursor: pointer; transition: background 0.2s; }
+        .post:hover { background: #fffaf7; }
+        .post-user { font-weight: bold; color: #1C84F5; margin-bottom: 5px; }
         .post-content { line-height: 1.4; white-space: pre-wrap; }
         .post-date { color: #888; font-size: 0.8rem; margin-top: 5px; }
         .controls { padding: 10px 15px; background: #fffaf7; border-bottom: 1px solid #fee2e2; display: flex; align-items: center; gap: 1rem; }
         button { padding: 5px 15px; cursor: pointer; }
         .auto-refresh-label { font-size: 0.9rem; cursor: pointer; }
+        .close-btn { cursor: pointer; font-weight: bold; background: rgba(0,0,0,0.2); padding: 2px 8px; border-radius: 4px; }
+        .close-btn:hover { background: rgba(0,0,0,0.4); }
+        .detail-body { padding: 20px; overflow-y: auto; }
+        .notification-item { border-bottom: 1px solid #eee; padding: 10px; font-size: 0.9rem; }
+        .post-actions { margin-top: 10px; display: flex; gap: 10px; }
+        .action-btn { background: white; border: 1px solid #d1d5db; border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; cursor: pointer; transition: all 0.2; color: #4b5563; }
+        .action-btn:hover { background: #fff7ed; border-color: #1C84F5; color: #1C84F5; }
     </style>
 </head>
 <body>
-    <h1>Karotter App</h1>
-    <p class="success">ログインに成功しました。コンテンツはここに表示されます。</p>
+    <div class="taskbar">
+        <div class="taskbar-left"></div>
+        <div id="taskbarClock" class="taskbar-center">00:00:00</div>
+        <div id="taskbarUser" class="taskbar-right">読み込み中...</div>
+    </div>
+
+    <div class="side-taskbar">
+        <div style="font-size: 0.7rem; opacity: 0.6; margin-bottom: 5px; padding-left: 5px;">RUNNING APPS</div>
+        <div id="taskbarWindows" style="display: flex; flex-direction: column; gap: 5px;"></div>
+    </div>
+
+    <div class="desktop" id="desktop">
+        <div class="shortcut" onclick="toggleApp('timelineWindow')">
+            <div class="shortcut-icon">🏠</div>
+            <div class="shortcut-label">タイムライン</div>
+        </div>
+        <div class="shortcut" onclick="toggleApp('notificationWindow')">
+            <div class="shortcut-icon">🔔</div>
+            <div class="shortcut-label">通知</div>
+        </div>
+        <div class="shortcut" onclick="changeWallpaper()">
+            <div class="shortcut-icon">🖼️</div>
+            <div class="shortcut-label">壁紙変更</div>
+        </div>
+        <div class="shortcut" onclick="openComposeWindow()">
+            <div class="shortcut-icon">✍️</div>
+            <div class="shortcut-label">カロート</div>
+        </div>
+    </div>
 
     <div id="timelineWindow" class="timeline">
-        <div class="timeline-header" id="dragHandle">
-            <h2>最新のタイムライン</h2>
-            <span style="font-size: 0.8rem; opacity: 0.8;">ここをドラッグして移動</span>
+        <div class="window-header" id="dragHandle">
+            <h2>タイムライン</h2>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 0.7rem; opacity: 0.7;">ドラッグ可</span>
+                <span class="close-btn" id="closeTimeline">×</span>
+            </div>
         </div>
         <div class="controls">
             <button id="refreshBtn">更新</button>
@@ -42,6 +158,26 @@
         <div id="posts">読み込み中...</div>
     </div>
 
+    <!-- 通知ウィンドウ -->
+    <div id="notificationWindow" class="notification-window">
+        <div class="window-header" id="notiDragHandle">
+            <h2>通知</h2>
+            <span class="close-btn" id="closeNoti">×</span>
+        </div>
+        <div id="notiBody" class="detail-body"></div>
+    </div>
+
+    <!-- プロフィールウィンドウ -->
+    <div id="profileWindow" class="profile-window">
+        <div class="window-header" id="profileDragHandle">
+            <h2>プロフィール</h2>
+            <span class="close-btn" id="closeProfile">×</span>
+        </div>
+        <div id="profileBody" class="detail-body"></div>
+    </div>
+
+    <script src="/js/auth.js"></script>
+    <script src="/js/post.js"></script>
     <script>
         let autoRefreshInterval = null;
 
@@ -73,7 +209,19 @@
                             </div>
                             <div class="post-content">${post.content || ''}</div>
                             <div class="post-date">${new Date(post.createdAt).toLocaleString()}</div>
+                            <div class="post-actions">
+                                <button class="action-btn" onclick="handleAction(event, '${post.id}', 'rekarot')">🔄 ${post.rekarotsCount || 0}</button>
+                                <button class="action-btn" onclick="handleQuote(event, '${post.id}')">💬</button>
+                                <button class="action-btn" onclick="handleAction(event, '${post.id}', 'like')">❤️ ${post.likesCount || 0}</button>
+                                <button class="action-btn" onclick="handleAction(event, '${post.id}', 'bookmark')">🔖</button>
+                            </div>
                         `;
+                        
+                        // ダブルクリックで詳細を開く
+                        postEl.addEventListener('dblclick', () => {
+                            openPostDetail(post, displayName, username);
+                        });
+
                         postsContainer.appendChild(postEl);
                     });
                 } else {
@@ -82,6 +230,430 @@
             } catch (error) {
                 console.error('Error:', error);
                 postsContainer.innerText = 'タイムラインの取得に失敗しました。';
+            }
+        }
+
+        // 詳細を表示する関数
+        function openPostDetail(post, displayName, username) {
+            // すでに同じ投稿のウィンドウが開いているかチェック
+            const existingWindow = document.getElementById(`detail-${post.id}`);
+            if (existingWindow) {
+                bringToFront(existingWindow);
+                return;
+            }
+
+            const detailWindow = document.createElement('div');
+            detailWindow.id = `detail-${post.id}`;
+            detailWindow.className = 'detail-window';
+            detailWindow.style.display = 'flex';
+            detailWindow.style.left = (150 + Math.random() * 50) + 'px'; // 重ならないよう少しずらす
+            detailWindow.style.top = (150 + Math.random() * 50) + 'px';
+            
+            detailWindow.innerHTML = `
+                <div class="window-header">
+                    <h2>投稿の詳細</h2>
+                    <span class="close-btn">×</span>
+                </div>
+                <div class="detail-body">
+                <div class="post-user" onclick="showUserProfile('${username}')" style="cursor: pointer; text-decoration: underline; display: inline-block;">
+                    ${displayName} <span style="font-weight:normal; color:#666;">@${username}</span>
+                </div>
+                <hr>
+                <div class="post-content" style="font-size: 1.1rem; margin: 15px 0;">${post.content || ''}</div>
+                <div class="post-date">${new Date(post.createdAt).toLocaleString()}</div>
+                <div class="post-actions" style="margin: 15px 0; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 10px 0; justify-content: space-around;">
+                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'rekarot')">🔄 リカロート (${post.rekarotsCount || 0})</button>
+                    <button class="action-btn" onclick="handleQuote(event, '${post.id}')">💬 引用</button>
+                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'like')">❤️ いいね (${post.likesCount || 0})</button>
+                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'bookmark')">🔖 ブックマーク</button>
+                </div>
+                <div style="margin-top:20px; color:#666; font-size:0.9rem;">
+                    ID: ${post.id}<br>
+                    返信数: ${post.repliesCount || 0}
+                </div>
+                </div>
+            `;
+            
+            document.body.appendChild(detailWindow);
+            makeDraggable(detailWindow.querySelector('.window-header'), detailWindow);
+            syncTaskbar();
+            
+            detailWindow.querySelector('.close-btn').onclick = () => detailWindow.remove();
+            bringToFront(detailWindow);
+        }
+
+        // プロフィールを非同期で取得して表示する関数
+        async function showUserProfile(username) {
+            const profileWindow = document.getElementById('profileWindow');
+            const profileBody = document.getElementById('profileBody');
+            
+            profileBody.innerHTML = '<div style="text-align:center; padding:20px; color:#666;">読み込み中...</div>';
+            profileWindow.style.display = 'flex';
+            
+            bringToFront(profileWindow);
+            profileWindow.style.zIndex = 50; // プロフィールはさらに上に
+
+            try {
+                const response = await fetch(`/api/users/${username}`);
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                // レスポンスの user プロパティの中に詳細データが入っている
+                const profileUser = data.user;
+                const isFollowing = data.isFollowing;
+
+                profileBody.innerHTML = `
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <div style="font-size: 1.2rem; font-weight: bold; color: #1C84F5;">${profileUser.displayName || username}</div>
+                        <div style="color: #666;">@${profileUser.username || username}</div>
+                    </div>
+                    <div style="background: #f0f7ff; padding: 15px; border-radius: 8px; border: 1px solid #bae1ff; margin-bottom: 15px;">
+                        <div style="font-size: 0.95rem;">
+                            <strong>自己紹介:</strong><br>
+                            <p style="white-space: pre-wrap; margin-top: 8px; line-height: 1.5;">${profileUser.bio || '自己紹介はありません'}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="action-btn" style="flex: 1; background: ${isFollowing ? '#9ca3af' : '#1C84F5'}; color: white; border: none; padding: 10px; font-weight: bold;" 
+                                onclick="handleFollow(event, '${profileUser.id || ''}')" ${isFollowing ? 'disabled' : ''}>
+                            ${isFollowing ? '✅ フォロー中' : '👤 フォローする'}
+                        </button>
+                    </div>
+                    <div style="margin-top: 15px; font-size: 0.8rem; color: #888; display: flex; justify-content: space-around;">
+                        <span>フォロー: ${profileUser.followingCount || 0}</span>
+                        <span>フォロワー: ${profileUser.followersCount || 0}</span>
+                    </div>
+                `;
+            } catch (error) {
+                profileBody.innerHTML = `<div style="color:red; padding:20px; text-align:center;">プロフィールの取得に失敗しました</div>`;
+            }
+        }
+
+        async function loadNotifications() {
+            const notiWindow = document.getElementById('notificationWindow');
+            const notiBody = document.getElementById('notiBody');
+            notiWindow.style.display = 'flex';
+            bringToFront(notiWindow);
+            
+            notiBody.innerHTML = '読み込み中...';
+
+            try {
+                const response = await fetch('/api/notifications');
+                const data = await response.json();
+
+                // レスポンス構造 { notifications: [...] } に対応
+                const notifications = data.notifications || [];
+                notiBody.innerHTML = '';
+                if (notifications.length === 0) {
+                    notiBody.innerHTML = '通知はありません。';
+                    return;
+                }
+
+                notifications.forEach(n => {
+                    const div = document.createElement('div');
+                    div.className = 'notification-item';
+                    
+                    // 通知タイプのマッピング（大文字小文字に対応）
+                    const typeMap = { 
+                        'LIKE': '❤️ いいね', 
+                        'REKAROT': '🔄 リカロート', 
+                        'MENTION': '🏷️ メンション', 
+                        'FOLLOW': ' フォロー',
+                        'REPLY': '💬 返信'
+                    };
+                    
+                    const actorName = n.actor?.displayName || (n.actors && n.actors[0]?.displayName) || '誰か';
+                    const dateStr = new Date(n.createdAt).toLocaleString();
+
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom: 4px;">
+                            <strong>${typeMap[n.type.toUpperCase()] || n.type}</strong>
+                            <small style="color:#888; font-size: 0.7rem;">${dateStr}</small>
+                        </div>
+                        <div style="color:#555;">${actorName} さんから</div>
+                        ${n.post ? `<div style="font-size:0.8rem; color:#777; margin-top:5px; border-left:2px solid #ddd; padding-left:8px; font-style:italic;">${n.post.content?.substring(0, 40) || ''}...</div>` : ''}
+                    `;
+                    notiBody.appendChild(div);
+                });
+            } catch (e) {
+                notiBody.innerHTML = '取得失敗';
+            }
+        }
+
+        async function handleFollow(event, userId) {
+            event.stopPropagation();
+            try {
+                const response = await fetch(`/api/follow/${userId}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.error) {
+                    alert('フォロー失敗: ' + result.error);
+                } else {
+                    alert('フォローしました！');
+                    event.target.innerText = '✅ フォロー中';
+                    event.target.disabled = true;
+                    event.target.style.background = '#9ca3af';
+                }
+            } catch (error) {
+                alert('通信エラーが発生しました');
+            }
+        }
+
+        async function handleQuote(event, postId) {
+            event.stopPropagation();
+            
+            const composeWindow = document.createElement('div');
+            composeWindow.className = 'compose-window';
+            composeWindow.style.display = 'flex';
+            composeWindow.style.left = (200 + Math.random() * 50) + 'px';
+            composeWindow.style.top = (200 + Math.random() * 50) + 'px';
+            
+            composeWindow.innerHTML = `
+                <div class="window-header">
+                    <h2>引用を投稿</h2>
+                    <span class="close-btn">×</span>
+                </div>
+                <div class="detail-body">
+                    <textarea id="quoteText" style="width: 100%; height: 100px; padding: 10px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; resize: none;" placeholder="引用コメントを入力..."></textarea>
+                    <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                        <button id="submitQuote" style="background: #1C84F5; color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer;">カロートする</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(composeWindow);
+            makeDraggable(composeWindow.querySelector('.window-header'), composeWindow);
+            bringToFront(composeWindow);
+            syncTaskbar();
+            
+            composeWindow.querySelector('.close-btn').onclick = () => {
+                composeWindow.remove();
+                syncTaskbar();
+            };
+            
+            composeWindow.querySelector('#submitQuote').onclick = async () => {
+                const content = composeWindow.querySelector('#quoteText').value.trim();
+                if (!content) return alert('内容を入力してください');
+
+                try {
+                    const result = await createPost(content, postId);
+                    if (result.error) {
+                        alert('引用に失敗しました: ' + result.error);
+                    } else {
+                        composeWindow.remove();
+                        syncTaskbar();
+                        loadTimeline();
+                    }
+                } catch (error) {
+                    alert('通信エラーが発生しました');
+                }
+            };
+        }
+
+        // 新規カロート（投稿）ウィンドウを開く関数
+        function openComposeWindow() {
+            const composeWindow = document.createElement('div');
+            composeWindow.className = 'compose-window';
+            composeWindow.style.display = 'flex';
+            composeWindow.style.left = (300 + Math.random() * 50) + 'px';
+            composeWindow.style.top = (200 + Math.random() * 50) + 'px';
+            
+            composeWindow.innerHTML = `
+                <div class="window-header">
+                    <h2>新規カロート</h2>
+                    <span class="close-btn">×</span>
+                </div>
+                <div class="detail-body">
+                    <textarea id="postText" style="width: 100%; height: 100px; padding: 10px; box-sizing: border-box; border-radius: 4px; border: 1px solid #ccc; font-family: inherit; resize: none;" placeholder="いまどうしてる？"></textarea>
+                    <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                        <button id="submitPost" style="background: #1C84F5; color: white; border: none; padding: 8px 20px; border-radius: 4px; font-weight: bold; cursor: pointer;">カロートする</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(composeWindow);
+            makeDraggable(composeWindow.querySelector('.window-header'), composeWindow);
+            bringToFront(composeWindow);
+            syncTaskbar();
+            
+            composeWindow.querySelector('.close-btn').onclick = () => {
+                composeWindow.remove();
+                syncTaskbar();
+            };
+            
+            composeWindow.querySelector('#submitPost').onclick = async () => {
+                const content = composeWindow.querySelector('#postText').value.trim();
+                if (!content) return alert('内容を入力してください');
+
+                const result = await createPost(content); // quotedPostIdを渡さない（nullになる）
+                if (result.error) {
+                    alert('投稿に失敗しました: ' + result.error);
+                } else {
+                    composeWindow.remove();
+                    syncTaskbar();
+                    loadTimeline();
+                }
+            };
+        }
+
+        async function handleAction(event, postId, action) {
+            event.stopPropagation();
+            try {
+                const response = await fetch(`/api/posts/${postId}/${action}`, { method: 'POST' });
+                const result = await response.json();
+                if (result.error) {
+                    alert('エラー: ' + result.error);
+                } else {
+                    loadTimeline(); // 成功したら表示を更新
+                }
+            } catch (error) {
+                console.error('Action failed:', error);
+                alert('操作に失敗しました');
+            }
+        }
+
+        function bringToFront(target) {
+            document.querySelectorAll('.timeline, .detail-window, .profile-window, .notification-window, .compose-window').forEach(w => {
+                w.style.zIndex = 10;
+            });
+            target.style.zIndex = 30;
+            if (target.style.display === 'none') target.style.display = 'flex';
+        }
+
+        // 壁紙変更ウィンドウを開く
+        async function changeWallpaper() {
+            const win = document.createElement('div');
+            win.className = 'detail-window';
+            win.style.display = 'flex';
+            win.style.width = '450px';
+            win.style.left = '250px';
+            win.style.top = '100px';
+            
+            win.innerHTML = `
+                <div class="window-header">
+                    <h2>壁紙設定</h2>
+                    <span class="close-btn">×</span>
+                </div>
+                <div class="detail-body">
+                    <div style="margin-bottom: 15px; background: #f3f4f6; padding: 10px; border-radius: 8px;">
+                        <label style="font-size: 0.8rem; display: block; margin-bottom: 5px;">新しい壁紙をアップロード:</label>
+                        <input type="file" id="wpUploadInput" accept="image/*" style="font-size: 0.8rem;">
+                        <button id="wpUploadBtn" style="margin-top: 5px; width: 100%; padding: 5px; background: #1C84F5; color: white; border: none; border-radius: 4px; cursor: pointer;">アップロード実行</button>
+                    </div>
+                    <div id="wallpaperList" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-height: 250px; overflow-y: auto;">
+                        読み込み中...
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(win);
+            makeDraggable(win.querySelector('.window-header'), win);
+            bringToFront(win);
+            syncTaskbar();
+
+            const closeBtn = win.querySelector('.close-btn');
+            closeBtn.onclick = () => { win.remove(); syncTaskbar(); };
+
+            const listContainer = win.querySelector('#wallpaperList');
+            const refreshList = async () => {
+                const res = await fetch('/api/wallpapers');
+                const files = await res.json();
+                listContainer.innerHTML = '';
+                files.forEach(file => {
+                    const img = document.createElement('img');
+                    img.src = `/wallpaper/${file}`;
+                    img.style.width = '100%'; img.style.height = '70px'; img.style.objectFit = 'cover';
+                    img.style.cursor = 'pointer'; img.style.borderRadius = '4px'; img.style.border = '2px solid transparent';
+                    img.onclick = () => {
+                        const url = `/wallpaper/${file}`;
+                        document.getElementById('desktop').style.backgroundImage = `url('${url}')`;
+                        localStorage.setItem('karonode_wallpaper', url);
+                    };
+                    listContainer.appendChild(img);
+                });
+            };
+
+            win.querySelector('#wpUploadBtn').onclick = async () => {
+                const input = win.querySelector('#wpUploadInput');
+                if (!input.files[0]) return alert('ファイルを選択してください');
+                const file = input.files[0];
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const res = await fetch('/api/wallpapers/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filename: file.name, data: e.target.result })
+                    });
+                    if (res.ok) { refreshList(); } else { alert('失敗しました'); }
+                };
+                reader.readAsDataURL(file);
+            };
+
+            refreshList();
+        }
+
+        // 保存された壁紙があれば適用
+        const savedWallpaper = localStorage.getItem('karonode_wallpaper');
+        if (savedWallpaper) document.getElementById('desktop').style.backgroundImage = `url('${savedWallpaper}')`;
+
+        // アイコンからアプリを起動・前面化する
+        function toggleApp(id) {
+            const win = document.getElementById(id);
+            if (win.style.display === 'none' || !win.style.display) {
+                if (id === 'notificationWindow') loadNotifications();
+            }
+            bringToFront(win);
+            syncTaskbar();
+        }
+
+        // タスクバーの同期
+        function syncTaskbar() {
+            const container = document.getElementById('taskbarWindows');
+            container.innerHTML = '';
+            
+            const windowConfigs = [
+                { selector: '#timelineWindow', title: 'タイムライン' },
+                { selector: '#notificationWindow', title: '通知' },
+                { selector: '#profileWindow', title: 'プロフィール' }
+            ];
+
+            // 静的なウィンドウ
+            windowConfigs.forEach(conf => {
+                const el = document.querySelector(conf.selector);
+                if (el && el.style.display !== 'none') {
+                    createTaskItem(conf.title, el);
+                }
+            });
+
+            // 動的なウィンドウ（詳細や投稿）
+            document.querySelectorAll('.detail-window, .compose-window').forEach(el => {
+                const title = el.querySelector('h2').innerText;
+                createTaskItem(title, el);
+            });
+
+            function createTaskItem(title, target) {
+                const btn = document.createElement('button');
+                btn.className = 'taskbar-item';
+                btn.innerText = title;
+                btn.onclick = () => bringToFront(target);
+                container.appendChild(btn);
+            }
+        }
+
+        // 時計の更新
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('taskbarClock').innerText = now.toLocaleTimeString();
+        }
+
+        // ユーザー情報の読み込み
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/me');
+                const user = await response.json();
+                document.getElementById('taskbarUser').innerText = `${user.displayName} (${user.username})`;
+            } catch (e) {
+                document.getElementById('taskbarUser').innerText = 'ゲスト';
             }
         }
 
@@ -97,37 +669,52 @@
             }
         }, 10000);
 
-        // ドラッグ移動のロジック
-        const dragHandle = document.getElementById('dragHandle');
-        const timelineWindow = document.getElementById('timelineWindow');
-        let isDragging = false;
-        let offset = { x: 0, y: 0 };
+        // 共通のドラッグロジック
+        function makeDraggable(handle, target) {
+            let isDragging = false;
+            let offset = { x: 0, y: 0 };
 
-        dragHandle.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            // ウィンドウの左上とマウス位置の差分を記録
-            offset.x = e.clientX - timelineWindow.offsetLeft;
-            offset.y = e.clientY - timelineWindow.offsetTop;
-            dragHandle.style.cursor = 'grabbing';
+            handle.addEventListener('mousedown', (e) => {
+                if (e.target.classList.contains('close-btn')) return;
+                isDragging = true;
+                offset.x = e.clientX - target.offsetLeft;
+                offset.y = e.clientY - target.offsetTop;
+                handle.style.cursor = 'grabbing';
+                bringToFront(target);
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                target.style.left = `${e.clientX - offset.x}px`;
+                target.style.top = `${e.clientY - offset.y}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                handle.style.cursor = 'move';
+            });
+        }
+
+        makeDraggable(document.getElementById('dragHandle'), document.getElementById('timelineWindow'));
+        makeDraggable(document.getElementById('profileDragHandle'), document.getElementById('profileWindow'));
+        makeDraggable(document.getElementById('notiDragHandle'), document.getElementById('notificationWindow'));
+
+        document.getElementById('closeTimeline').addEventListener('click', () => {
+            document.getElementById('timelineWindow').style.display = 'none';
+            syncTaskbar();
+        });
+        document.getElementById('closeProfile').addEventListener('click', () => {
+            document.getElementById('profileWindow').style.display = 'none';
+            syncTaskbar();
+        });
+        document.getElementById('closeNoti').addEventListener('click', () => {
+            document.getElementById('notificationWindow').style.display = 'none';
+            syncTaskbar();
         });
 
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            
-            // 新しい位置を計算
-            let newX = e.clientX - offset.x;
-            let newY = e.clientY - offset.y;
-            
-            // 画面外にはみ出さないように制限（任意）
-            timelineWindow.style.left = `${newX}px`;
-            timelineWindow.style.top = `${newY}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            dragHandle.style.cursor = 'move';
-        });
-
+        setInterval(updateClock, 1000);
+        loadUserInfo();
+        syncTaskbar();
         loadTimeline();
     </script>
 </body>

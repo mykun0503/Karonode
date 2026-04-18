@@ -1,9 +1,9 @@
 const axios = require('axios');
 
 /**
- * Karotter API Client for Notifications
+ * Karotter API Client for User Profiles
  */
-class KarotterNotification {
+class KarotterProfile {
   constructor() {
     this.client = axios.create({
       baseURL: 'https://api.karotter.com/api/',
@@ -14,16 +14,17 @@ class KarotterNotification {
   }
 
   /**
-   * 通知を取得する
-   * @param {string} token - 認証トークン
+   * ユーザープロフィールを取得する
+   * @param {string} username - 取得対象のユーザー名
+   * @param {string} token - 認証トークン（オプション）
    * @returns {Promise<Object>} APIレスポンス
    */
-  async getNotifications(token) {
+  async getUserProfile(username, token) {
     try {
       const config = {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       };
-      const response = await this.client.get('/notifications', config);
+      const response = await this.client.get(`/users/${username}`, config);
       return response.data;
     } catch (error) {
       this._handleError(error);
@@ -33,7 +34,7 @@ class KarotterNotification {
   _handleError(error) {
     if (error.response) {
       console.error('API Error:', error.response.data);
-      throw new Error(error.response.data.message || 'Failed to fetch notifications');
+      throw new Error(error.response.data.message || 'Failed to fetch profile');
     } else if (error.request) {
       console.error('Network Error: No response received');
       throw new Error('Network error, please try again later');
@@ -44,4 +45,4 @@ class KarotterNotification {
   }
 }
 
-module.exports = new KarotterNotification();
+module.exports = new KarotterProfile();
