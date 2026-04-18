@@ -1,4 +1,8 @@
 # Karotter非公式Webアプリ Karonode
+<img width="1920" height="1080" alt="Image" src="https://github.com/user-attachments/assets/6820d331-3e97-4ff7-b0f3-06867df3d50c" />
+　
+
+
 > [!CAUTION]
 > - Karotter非公式アプリです。使用は自己責任でお願いします。
 > - VS CodeのGEMINI CODE ASSISTで作成しました。AI嫌いな人は帰ってください
