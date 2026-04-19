@@ -1,4 +1,5 @@
 let _cachedServerDeviceId = null;
+let _cachedBrowserDeviceId = null;
 
 const auth = {
     DEVICE_ID_KEY: 'karonode_device_id',
@@ -16,7 +17,7 @@ const auth = {
         });
     },
 
-    getDeviceId() {
+    async getDeviceId() {
         if (typeof window === 'undefined') {
             // Node.js環境: ファイルに保存して永続化
             if (_cachedServerDeviceId) return _cachedServerDeviceId;
@@ -36,12 +37,22 @@ const auth = {
             return _cachedServerDeviceId;
         }
 
-        let deviceId = localStorage.getItem(this.DEVICE_ID_KEY);
-        if (!deviceId) {
-            deviceId = this.generateUUID();
-            localStorage.setItem(this.DEVICE_ID_KEY, deviceId);
+        // ブラウザ環境: サーバー側の /api/device-id エンドポイント（.device_idファイルを参照）からのみ取得する
+        if (_cachedBrowserDeviceId) return _cachedBrowserDeviceId;
+        try {
+            const response = await fetch('/api/device-id');
+            const data = await response.json();
+            if (data.deviceId) {
+                _cachedBrowserDeviceId = data.deviceId;
+            }
+        } catch (e) {
+            console.error('Failed to fetch device ID from server:', e);
         }
-        return deviceId;
+        
+        if (!_cachedBrowserDeviceId) {
+            throw new Error('.device_id の取得に失敗しました。サーバーが正常に起動しているか確認してください。');
+        }
+        return _cachedBrowserDeviceId;
     },
 
     async fetchCsrfToken() {
@@ -62,19 +73,27 @@ const auth = {
     },
 
     async login(identifier, password) {
-        const csrfToken = await this.fetchCsrfToken();
-        const isNode = typeof window === 'undefined';
+        if (typeof window !== 'undefined') {
+            // ブラウザ環境: 自サーバーの /login を経由して CORS エラーを回避する
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier, password })
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        }
 
-        // サーバーからは Karotter API へ直接、ブラウザからは自作サーバーの /login へ送信する
-        // ※ Node.js の fetch は相対パスを扱えないため、サーバー側では絶対URLが必要
-        const url = isNode ? 'https://api.karotter.com/api/auth/login' : '/login';
-        const deviceId = this.getDeviceId();
-
+        // Node.js環境: 外部 API サーバーへ直接リクエストを送る
+        const url = 'https://api.karotter.com/api/auth/login';
+        const deviceId = await this.getDeviceId(); // Node.js版は .device_id を読み取る
         const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-csrf-token': csrfToken,
                 'x-client-type': 'web'
             },
             body: JSON.stringify({
