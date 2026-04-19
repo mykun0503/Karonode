@@ -28,7 +28,9 @@
             const password = e.target.password.value;
 
             try {
+                // auth.js を使用してログインを実行
                 const result = await auth.login(username, password);
+
                 if (result.error) {
                     alert('ログイン失敗: ' + result.error);
                 } else {

@@ -39,13 +39,13 @@
             background-position: center;
             background-repeat: no-repeat;
             z-index: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            flex-wrap: wrap;
-            align-content: flex-start;
-            gap: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 40px;
         }
+        .shortcut-column { display: flex; flex-direction: column; gap: 30px; }
+        .shortcut-column.left { align-items: flex-start; }
+        .shortcut-column.right { align-items: flex-end; }
 
         /* デスクトップショートカットのスタイル */
         .shortcut {
@@ -80,7 +80,7 @@
         .taskbar-item:hover { background: rgba(255,255,255,0.2); }
 
         /* アプリのようなウィンドウのスタイル */
-        .timeline, .detail-window, .profile-window, .notification-window, .compose-window { 
+        .window-base, .timeline, .detail-window, .profile-window, .notification-window, .compose-window { 
             position: absolute; top: 60px; left: 180px; width: 450px; height: 600px; 
             background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d1d5db;
@@ -115,15 +115,52 @@
         
         .parent-link-line { width: 2px; height: 20px; background: #d1d5db; margin-left: 26px; }
 
+        /* アカウント別カラー */
+        .acc-blue .window-header { background: #1C84F5; }
+        .acc-red .window-header { background: #dc2626; }
+        .acc-red .post-user { color: #dc2626; }
+
+        /* 投稿ごとのアカウント識別バー */
+        .post.border-acc-blue { border-left: 4px solid #1C84F5; padding-left: 11px; }
+        .post.border-acc-red { border-left: 4px solid #dc2626; padding-left: 11px; }
+        .refresh-controls { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+
         /* アバターのスタイル */
         .post-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background: #eee; flex-shrink: 0; cursor: pointer; }
+
+        /* 通知ポップアップ（トースト）のスタイル */
+        .notification-toast {
+            position: fixed; top: 45px; left: 50%; transform: translateX(-50%);
+            background: white; color: #333; padding: 12px 20px; border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 2000; font-size: 0.9rem;
+            border-left: 4px solid #1C84F5; max-width: 350px; pointer-events: auto;
+            display: flex; align-items: center; gap: 10px; animation: toastIn 0.3s ease-out;
+        }
+        @keyframes toastIn { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+        .toast-out { animation: toastOut 0.3s ease-in forwards; }
+        @keyframes toastOut { from { transform: translateX(-50%) translateY(0); opacity: 1; } to { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
+        .toast-content-preview { font-size: 0.8rem; color: #666; margin-top: 4px; border-top: 1px solid #eee; padding-top: 4px; }
+        .notification-toast.error-toast { border-left-color: #ff4d4f; }
+        .toast-clickable { cursor: pointer; text-decoration: underline; }
+        .toast-clickable:hover { color: #1C84F5; }
+
+        /* アカウント切替メニュー */
+        .account-menu { position: absolute; top: 40px; right: 10px; background: white; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 220px; display: none; z-index: 1100; color: #333; }
+        .account-item { padding: 12px; cursor: pointer; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; font-size: 0.85rem; }
+        .account-item:hover { background: #f0f7ff; }
+        .account-item.active { border-left: 4px solid #1C84F5; background: #e6f0ff; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="taskbar">
-        <div class="taskbar-left"></div>
+        <div id="taskbarUserLeft" class="taskbar-left" onclick="toggleAccountMenu()" style="cursor: pointer; display: none;"></div>
         <div id="taskbarClock" class="taskbar-center">00:00:00</div>
-        <div id="taskbarUser" class="taskbar-right">読み込み中...</div>
+        <div id="taskbarUserRight" class="taskbar-right" onclick="toggleAccountMenu()" style="cursor: pointer;">読み込み中...</div>
+    </div>
+
+    <div id="accountMenu" class="account-menu">
+        <div id="accountList"></div>
+        <div class="account-item" onclick="addNewAccount()" style="font-weight: bold; color: #1C84F5; justify-content: center;">+ アカウントを追加</div>
     </div>
 
     <div class="side-taskbar">
@@ -131,56 +168,7 @@
         <div id="taskbarWindows" style="display: flex; flex-direction: column; gap: 5px;"></div>
     </div>
 
-    <div class="desktop" id="desktop">
-        <div class="shortcut" onclick="toggleApp('timelineWindow')">
-            <div class="shortcut-icon">🏠</div>
-            <div class="shortcut-label">タイムライン</div>
-        </div>
-        <div class="shortcut" onclick="toggleApp('notificationWindow')">
-            <div class="shortcut-icon">🔔</div>
-            <div class="shortcut-label">通知</div>
-        </div>
-        <div class="shortcut" onclick="changeWallpaper()">
-            <div class="shortcut-icon">🖼️</div>
-            <div class="shortcut-label">壁紙変更</div>
-        </div>
-        <div class="shortcut" onclick="openComposeWindow()">
-            <div class="shortcut-icon">✍️</div>
-            <div class="shortcut-label">カロート</div>
-        </div>
-    </div>
-
-    <div id="timelineWindow" class="timeline">
-        <div class="window-header" id="dragHandle">
-            <h2>タイムライン</h2>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 0.7rem; opacity: 0.7;">ドラッグ可</span>
-                <span class="minimize-btn" onclick="document.getElementById('timelineWindow').style.display='none'; syncTaskbar();">_</span>
-                <span class="close-btn" id="closeTimeline">×</span>
-            </div>
-        </div>
-        <div class="controls">
-            <button id="refreshBtn">更新</button>
-            <label class="auto-refresh-label">
-                <input type="checkbox" id="autoRefreshCheck"> 10秒ごとに自動更新
-            </label>
-        </div>
-        <div id="posts">読み込み中...</div>
-        <div class="resize-handle"></div>
-    </div>
-
-    <!-- 通知ウィンドウ -->
-    <div id="notificationWindow" class="notification-window">
-        <div class="window-header" id="notiDragHandle">
-            <h2>通知</h2>
-            <div style="display: flex; align-items: center;">
-                <span class="minimize-btn" onclick="document.getElementById('notificationWindow').style.display='none'; syncTaskbar();">_</span>
-                <span class="close-btn" id="closeNoti">×</span>
-            </div>
-        </div>
-        <div id="notiBody" class="detail-body"></div>
-        <div class="resize-handle"></div>
-    </div>
+    <div class="desktop" id="desktop"></div>
 
     <script src="/js/auth.js"></script>
     <script src="/js/post.js"></script>
@@ -196,78 +184,319 @@
             return url;
         }
 
-        async function loadTimeline() {
-            const postsContainer = document.getElementById('posts');
-            try {
-                const response = await fetch('/api/timeline');
-                const data = await response.json();
-                console.log('API Response:', data); // デバッグ用：構造を確認するためにコンソールに出力
-                
-                postsContainer.innerHTML = '';
+        // レスポンスが正しいJSONかチェックするヘルパー
+        async function safeJson(response) {
+            const contentType = response.headers.get("content-type");
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`HTTP Error ${response.status}: ${text.substring(0, 100)}`);
+            }
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await response.text();
+                console.error("Expected JSON but got:", text);
+                throw new Error("サーバーからJSON以外のレスポンス（HTML等）が返されました。URLが正しいか確認してください。");
+            }
+            return await response.json();
+        }
 
-                // レスポンスが配列、もしくは data.posts が配列である場合に対応
-                const posts = Array.isArray(data) ? data : (data.posts || []);
+        let isAutoRefreshOn = false;
+        let refreshTimer = null;
 
-                if (posts.length > 0) {
-                    posts.forEach(post => {
-                        // ユーザー情報の参照先を柔軟にチェック
-                        const user = post.user || post.author || post;
-                        const displayName = user.displayName || 'Unknown';
-                        const username = user.username || 'unknown';
-                        const avatarUrl = fixAvatarUrl(user.avatarUrl);
-                        const postEl = document.createElement('div');
-                        postEl.className = 'post';
-                        postEl.innerHTML = `
-                            <div style="display: flex; gap: 12px;">
-                                <img src="${avatarUrl}" class="post-avatar" onclick="event.stopPropagation(); showUserProfile('${username}')">
-                                <div style="flex: 1;">
-                                    <div class="post-user">
-                                        ${displayName} 
-                                        <span style="color: #666; font-weight: normal; font-size: 0.9em;">@${username}</span>
-                                    </div>
-                                    <div class="post-content">${post.content || ''}</div>
-                                    <div class="post-date">${new Date(post.createdAt).toLocaleString()}</div>
-                                    <div class="post-actions">
-                                        <button class="action-btn" onclick="handleAction(event, '${post.id}', 'rekarot')">🔄 ${post.rekarotsCount || 0}</button>
-                                        <button class="action-btn" onclick="handleQuote(event, '${post.id}')">💬</button>
-                                        <button class="action-btn" onclick="handleAction(event, '${post.id}', 'like')">❤️ ${post.likesCount || 0}</button>
-                                        <button class="action-btn" onclick="handleAction(event, '${post.id}', 'bookmark')">🔖</button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        
-                        // ダブルクリックで詳細を開く
-                        postEl.addEventListener('dblclick', () => {
-                            openPostDetail(post, displayName, username);
-                        });
+        // 全アカウントのタイムラインを統合して読み込む
+        async function loadUnifiedTimeline() {
+            const win = document.getElementById('timeline-unified');
+            const postsContainer = win?.querySelector('.posts-list');
+            if (!postsContainer) return;
 
-                        postsContainer.appendChild(postEl);
+            let allPosts = [];
+            
+            // 各アカウントから最新20件ずつ取得してマージ
+            for (const acc of accounts) {
+                try {
+                    const response = await fetch('/api/timeline', { accountId: acc.id });
+                    const data = await safeJson(response);
+                    const posts = Array.isArray(data) ? data : (data.posts || []);
+                    posts.forEach(p => {
+                        p._ownerAccount = acc; // どのアカウントの投稿か保持
+                        allPosts.push(p);
                     });
-                } else {
-                    postsContainer.innerHTML = '投稿が見つかりませんでした。';
+                } catch (e) { console.error(`Fetch failed for ${acc.username}`, e); }
+            }
+
+            // 日付順（新しい順）にソート
+            allPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            postsContainer.innerHTML = '';
+            if (allPosts.length === 0) {
+                postsContainer.innerHTML = '投稿が見つかりませんでした。';
+                return;
+            }
+
+            allPosts.forEach(post => {
+                const acc = post._ownerAccount;
+                const user = post.user || post.author || post;
+                const avatarUrl = fixAvatarUrl(user.avatarUrl);
+                const colorClass = getAccountColorClass(acc.id);
+                
+                const postEl = document.createElement('div');
+                postEl.className = `post border-${colorClass}`;
+                postEl.innerHTML = `
+                    <div style="display: flex; gap: 12px;">
+                        <img src="${avatarUrl}" class="post-avatar" onclick="event.stopPropagation(); showUserProfile('${user.username}', ${JSON.stringify(acc).replace(/"/g, '&quot;')})">
+                        <div style="flex: 1;">
+                            <div class="post-user">
+                                ${user.displayName} 
+                                <span style="color: #666; font-weight: normal; font-size: 0.9em;">@${user.username}</span>
+                                <small style="float:right; opacity:0.6;">via ${acc.displayName}</small>
+                            </div>
+                            <div class="post-content">${post.content || ''}</div>
+                            <div class="post-date">${new Date(post.createdAt).toLocaleString()}</div>
+                            <div class="post-actions">
+                                <button class="action-btn" onclick="handleAction(event, '${post.id}', 'rekarot', '${acc.id}')">🔄 ${post.rekarotsCount || 0}</button>
+                                <button class="action-btn" onclick="handleQuote(event, '${post.id}', '${acc.id}')">💬</button>
+                                <button class="action-btn" onclick="handleAction(event, '${post.id}', 'like', '${acc.id}')">❤️ ${post.likesCount || 0}</button>
+                                <button class="action-btn" onclick="handleAction(event, '${post.id}', 'bookmark', '${acc.id}')">🔖</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                postEl.addEventListener('dblclick', () => {
+                    openPostDetail(post, user.displayName, user.username, acc);
+                });
+                postsContainer.appendChild(postEl);
+            });
+        }
+
+        // --- 複数アカウント管理ロジック ---
+        let accounts = [];
+        let activeAccountId = null;
+        let deviceId = 'shared-desktop-app'; // デフォルト値
+
+        // テスト用のアカウントが残っている場合があるため、初回のみlocalStorageをクリアする（必要に応じて）
+        if (localStorage.getItem('karonode_v1_reset') !== 'true') {
+            localStorage.removeItem('karonode_accounts');
+            localStorage.setItem('karonode_v1_reset', 'true');
+        }
+
+        function toggleAccountMenu() {
+            const menu = document.getElementById('accountMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            renderAccountList();
+        }
+
+        function renderAccountList() {
+            const list = document.getElementById('accountList');
+            list.innerHTML = '';
+            accounts.forEach(acc => {
+                const item = document.createElement('div');
+                item.className = 'account-item' + (acc.id === activeAccountId ? ' active' : '');
+                item.innerHTML = `
+                    <img src="${fixAvatarUrl(acc.avatarUrl)}" style="width:28px; height:28px; border-radius:50%; object-fit: cover;">
+                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        <div>${acc.displayName}</div>
+                        <div style="font-size: 0.7rem; color: #888;">@${acc.username}</div>
+                    </div>
+                `;
+                item.onclick = () => switchAccount(acc.id);
+                list.appendChild(item);
+            });
+        }
+
+        function switchAccount(id) {
+            activeAccountId = id;
+            localStorage.setItem('karonode_active_account_id', id);
+            document.getElementById('accountMenu').style.display = 'none';
+            loadUserInfo();
+            renderDesktopShortcuts();
+            // アクティブなアカウントのみを更新するのではなく、UI全体の表示名を更新
+            showNotificationToast(`アカウントを切り替えました`);
+        }
+
+        function getActiveAccount() {
+            return accounts.find(a => a.id === activeAccountId) || accounts[0];
+        }
+
+        async function addNewAccount() {
+            const username = prompt("追加するユーザーIDを入力してください:");
+            if (!username) return;
+            const password = prompt("パスワードを入力してください:");
+            if (!password) return;
+
+            try {
+                // auth.js を使用してログインを実行
+                const result = await auth.login(username, password);
+
+                if (result.error) {
+                    alert('ログイン失敗: ' + result.error);
+                    return;
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                postsContainer.innerText = 'タイムラインの取得に失敗しました。';
+
+                const token = result.accessToken || result.token || result.csrfToken;
+                if (!token) {
+                    alert('CSRFトークンの取得に失敗しました。');
+                    return;
+                }
+
+                const user = result.user || {};
+                const newAcc = {
+                    id: user.id || 'acc-' + Date.now(),
+                    username: user.username || username,
+                    displayName: user.displayName || username,
+                    avatarUrl: user.avatarUrl || '',
+                    csrfToken: token,
+                    password: password
+                };
+                
+                // サーバーサイドの account.json に保存
+                accounts.push(newAcc);
+                await originalFetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accounts })
+                });
+                
+                switchAccount(newAcc.id);
+            } catch (e) {
+                alert('通信エラーが発生しました: ' + e.message);
             }
         }
 
+        // アプリ起動時の初期化処理
+        async function initKaronode() {
+            try {
+                // .device_id からIDを取得
+                const devRes = await originalFetch('/api/device-id');
+                const devData = await safeJson(devRes);
+                if (devData.deviceId) deviceId = devData.deviceId;
+
+                // account.json からアカウントリストを取得
+                const accRes = await originalFetch('/api/accounts');
+                const accData = await safeJson(accRes);
+                accounts = accData.accounts || [];
+                activeAccountId = localStorage.getItem('karonode_active_account_id') || (accounts[0]?.id);
+            } catch (e) { console.error('Initialization failed:', e); }
+        }
+
+        // アカウントのインデックスに基づいてCSSクラスを返す
+        function getAccountColorClass(accId) {
+            const idx = accounts.findIndex(a => a.id === accId);
+            if (idx === 0) return 'acc-blue';
+            if (idx === 1) return 'acc-red';
+            return '';
+        }
+
+        // アカウントのインデックスに基づいて基準となる左端の座標を返す
+        function getAccountBaseLeft(accId) {
+            const idx = accounts.findIndex(a => a.id === accId);
+            // 1つ目の垢は180px(左)、2つ目の垢は650px(右)、それ以外は少しずつずらす
+            return idx === 1 ? 650 : 180 + (idx > 1 ? idx * 40 : 0);
+        }
+
+        // 全ての通信にアクティブアカウントのヘッダーを付与する
+        const originalFetch = window.fetch;
+        window.fetch = async function(url, options = {}) {
+            // options に accountId が指定されていればそちらを優先、なければ activeAccountId
+            const targetId = options.accountId || activeAccountId;
+            const acc = accounts.find(a => a.id === targetId) || getActiveAccount();
+            
+            if (acc && acc.csrfToken) {
+                options.headers = options.headers || {};
+                options.headers['x-csrf-token'] = acc.csrfToken;
+                options.headers['x-client-type'] = 'web';
+                options.headers['x-device-id'] = deviceId;
+            }
+            return originalFetch(url, options);
+        };
+
+        // タスクバーのスタイルを更新する関数
+        function updateTaskbarStyle() {
+            const taskbar = document.querySelector('.taskbar');
+            if (!taskbar) return;
+            
+            if (accounts.length >= 2) {
+                // 2アカウント以上の場合は青と赤のグラデーション
+                taskbar.style.background = 'linear-gradient(90deg, #1C84F5 0%, #dc2626 100%)';
+            } else {
+                // それ以外はデフォルトの青
+                taskbar.style.background = '#1C84F5';
+            }
+        }
+
+        // デスクトップショートカットをアカウントごとに描画する関数
+        function renderDesktopShortcuts() {
+            const desktop = document.getElementById('desktop');
+            if (!desktop) return;
+            desktop.innerHTML = '';
+            updateTaskbarStyle();
+
+            const leftCol = document.createElement('div');
+            leftCol.className = 'shortcut-column left';
+            const rightCol = document.createElement('div');
+            rightCol.className = 'shortcut-column right';
+
+            desktop.appendChild(leftCol);
+            desktop.appendChild(rightCol);
+
+            if (accounts.length === 1) {
+                // --- アカウントが1つの場合 ---
+                // ツール系は左
+                createShortcut(leftCol, '🏠', '統合タイムライン', () => openUnifiedTimeline());
+                createShortcut(leftCol, '🖼️', '壁紙変更', () => changeWallpaper());
+                
+                // 自分（1つ目の垢）は右
+                const acc = accounts[0];
+                createShortcut(rightCol, '🔔', `通知 (${acc.displayName})`, () => loadNotifications(acc));
+                createShortcut(rightCol, '✍️', `カロート (${acc.displayName})`, () => openComposeWindow(acc));
+
+            } else if (accounts.length >= 2) {
+                // --- アカウントが2つの場合 ---
+                // 1つ目のアカウント用 (+ツール) は左
+                createShortcut(leftCol, '🏠', '統合タイムライン', () => openUnifiedTimeline());
+                createShortcut(leftCol, '🖼️', '壁紙変更', () => changeWallpaper());
+                
+                const acc0 = accounts[0];
+                createShortcut(leftCol, '🔔', `通知 (${acc0.displayName})`, () => loadNotifications(acc0));
+                createShortcut(leftCol, '✍️', `カロート (${acc0.displayName})`, () => openComposeWindow(acc0));
+
+                // 2つ目のアカウント用は右
+                const acc1 = accounts[1];
+                createShortcut(rightCol, '🔔', `通知 (${acc1.displayName})`, () => loadNotifications(acc1));
+                createShortcut(rightCol, '✍️', `カロート (${acc1.displayName})`, () => openComposeWindow(acc1));
+                
+                // 3つ目以降がある場合はとりあえず右に追加（必要に応じて調整）
+                for(let i = 2; i < accounts.length; i++) {
+                    const accN = accounts[i];
+                    createShortcut(rightCol, '🔔', `通知 (${accN.displayName})`, () => loadNotifications(accN));
+                }
+            }
+        }
+
+        function createShortcut(parent, icon, label, onclick) {
+            const div = document.createElement('div');
+            div.className = 'shortcut';
+            div.onclick = onclick;
+            div.innerHTML = `<div class="shortcut-icon">${icon}</div><div class="shortcut-label">${label}</div>`;
+            parent.appendChild(div);
+        }
+
         // 詳細を表示する関数
-        async function openPostDetail(post, displayName, username) {
+        async function openPostDetail(post, displayName, username, account) {
+            if (!account) account = getActiveAccount();
             // すでに同じ投稿のウィンドウが開いているかチェック
-            const existingWindow = document.getElementById(`detail-${post.id}`);
+            const existingWindow = document.getElementById(`detail-${post.id}-${account.id}`);
             if (existingWindow) {
                 bringToFront(existingWindow);
                 return;
             }
 
             const detailWindow = document.createElement('div');
-            detailWindow.id = `detail-${post.id}`;
-            detailWindow.className = 'detail-window';
+            detailWindow.id = `detail-${post.id}-${account.id}`;
+            detailWindow.className = 'detail-window ' + getAccountColorClass(account.id);
             detailWindow.style.display = 'flex';
-            detailWindow.style.left = (150 + Math.random() * 50) + 'px'; // 重ならないよう少しずらす
-            detailWindow.style.top = (150 + Math.random() * 50) + 'px';
+            // アカウントごとの基準位置 + 少しのランダム性
+            detailWindow.style.left = (getAccountBaseLeft(account.id) + Math.random() * 30) + 'px';
+            detailWindow.style.top = (100 + Math.random() * 30) + 'px';
             
             const avatarUrl = fixAvatarUrl((post.user || post.author || post).avatarUrl);
       
@@ -291,11 +520,11 @@
                 <div class="post-content" style="font-size: 1.1rem; margin-bottom: 15px;">${post.content || ''}</div>
                 <div class="post-date" style="border-bottom: 1px solid #eee; padding-bottom: 10px;">${new Date(post.createdAt).toLocaleString()}</div>
                 <div class="post-actions" style="margin: 15px 0; border-bottom: 1px solid #eee; padding-bottom: 15px; justify-content: space-around;">
-                    <button class="action-btn" onclick="handleReply(event, '${post.id}')">↩️ 返信</button>
-                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'rekarot')">🔄 ${post.rekarotsCount || 0}</button>
-                    <button class="action-btn" onclick="handleQuote(event, '${post.id}')">💬</button>
-                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'like')">❤️ ${post.likesCount || 0}</button>
-                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'bookmark')">🔖</button>
+                    <button class="action-btn" onclick="handleReply(event, '${post.id}', '${account.id}')">↩️ 返信</button>
+                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'rekarot', '${account.id}')">🔄 ${post.rekarotsCount || 0}</button>
+                    <button class="action-btn" onclick="handleQuote(event, '${post.id}', '${account.id}')">💬</button>
+                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'like', '${account.id}')">❤️ ${post.likesCount || 0}</button>
+                    <button class="action-btn" onclick="handleAction(event, '${post.id}', 'bookmark', '${account.id}')">🔖</button>
                 </div>
                 <div style="margin-top:20px; color:#666; font-size:0.9rem;">
                     ID: ${post.id}<br>
@@ -315,7 +544,7 @@
             syncTaskbar();
 
             // ウィンドウの初期化
-            detailWindow.querySelector('.close-btn').onclick = () => detailWindow.remove();
+            detailWindow.querySelector('.close-btn').onclick = () => { detailWindow.remove(); syncTaskbar(); };
             bringToFront(detailWindow);
 
             // 親投稿を遡って取得
@@ -327,7 +556,7 @@
                 try {
                     // 最大5つまで遡る（無限ループ防止）
                     while (currentParentId && parents.length < 5) {
-                        const res = await fetch(`/api/posts/${currentParentId}`);
+                        const res = await fetch(`/api/posts/${currentParentId}`, { accountId: account.id });
                         const parentPost = await res.json();
                         if (parentPost.error || !parentPost.id) break;
                         
@@ -361,7 +590,7 @@
             // 返信を取得して表示
             const repliesContainer = detailWindow.querySelector(`#replies-list-${post.id}`);
             try {
-                const repliesRes = await fetch(`/api/posts/${post.id}/replies`);
+                const repliesRes = await fetch(`/api/posts/${post.id}/replies`, { accountId: account.id });
                 const repliesData = await repliesRes.json();
                 repliesContainer.innerHTML = '';
 
@@ -376,19 +605,25 @@
                         replyEl.className = 'post';
                         replyEl.style.fontSize = '0.9rem';
                         replyEl.innerHTML = `
-                            <div style="display: flex; gap: 10px;">
-                                <img src="${rAvatar}" class="post-avatar" style="width: 32px; height: 32px;" onclick="event.stopPropagation(); showUserProfile('${rUser.username}')">
+                            <div style="display: flex; gap: 12px;">
+                                <img src="${rAvatar}" class="post-avatar" style="width: 36px; height: 36px;" onclick="event.stopPropagation(); showUserProfile('${rUser.username}')">
                                 <div style="flex: 1;">
                                     <div class="post-user" style="font-size: 0.85rem;">
                                         ${rUser.displayName || 'Unknown'} <span style="font-weight:normal; color:#666;">@${rUser.username || 'unknown'}</span>
                                     </div>
                                     <div class="post-content">${reply.content || ''}</div>
                                     <div class="post-date">${new Date(reply.createdAt).toLocaleString()}</div>
+                                    <div class="post-actions">
+                                        <button class="action-btn" onclick="handleAction(event, '${reply.id}', 'rekarot', '${account.id}')"> ${reply.rekarotsCount || 0}</button>
+                                        <button class="action-btn" onclick="handleQuote(event, '${reply.id}', '${account.id}')">💬</button>
+                                        <button class="action-btn" onclick="handleAction(event, '${reply.id}', 'like', '${account.id}')">❤️ ${reply.likesCount || 0}</button>
+                                        <button class="action-btn" onclick="handleAction(event, '${reply.id}', 'bookmark', '${account.id}')">🔖</button>
+                                    </div>
                                 </div>
                             </div>
                         `;
                         replyEl.onclick = () => {
-                            openPostDetail(reply, rUser.displayName, rUser.username);
+                            openPostDetail(reply, rUser.displayName, rUser.username, account);
                         };
                         repliesContainer.appendChild(replyEl);
                     });
@@ -399,8 +634,9 @@
         }
 
         // プロフィールを非同期で取得して表示する関数
-        async function showUserProfile(username) {
-            const windowId = `profile-${username}`;
+        async function showUserProfile(username, account) {
+            if (!account) account = getActiveAccount();
+            const windowId = `profile-${username}-${account.id}`;
             let profileWindow = document.getElementById(windowId);
             
             if (profileWindow) {
@@ -410,10 +646,10 @@
 
             profileWindow = document.createElement('div');
             profileWindow.id = windowId;
-            profileWindow.className = 'profile-window';
+            profileWindow.className = 'profile-window ' + getAccountColorClass(account.id);
             profileWindow.style.display = 'flex';
-            profileWindow.style.left = (200 + Math.random() * 50) + 'px';
-            profileWindow.style.top = (200 + Math.random() * 50) + 'px';
+            profileWindow.style.left = (getAccountBaseLeft(account.id) + 30 + Math.random() * 30) + 'px';
+            profileWindow.style.top = (150 + Math.random() * 30) + 'px';
 
             profileWindow.innerHTML = `
                 <div class="window-header">
@@ -441,7 +677,7 @@
             const profileBody = profileWindow.querySelector('.profile-body');
 
             try {
-                const response = await fetch(`/api/users/${username}`);
+                const response = await fetch(`/api/users/${username}`, { accountId: account.id });
                 const data = await response.json();
 
                 if (data.error) throw new Error(data.error);
@@ -479,7 +715,7 @@
                 `;
 
                 // ユーザーの投稿を取得
-                const postsRes = await fetch(`/api/users/${profileUser.id}/posts`);
+                const postsRes = await fetch(`/api/users/${profileUser.id}/posts`, { accountId: account.id });
                 const postsData = await postsRes.json();
                 const userPostsList = profileBody.querySelector('.user-posts-list');
                 userPostsList.innerHTML = '';
@@ -500,7 +736,7 @@
                             </div>
                         `;
                         postEl.onclick = () => {
-                            openPostDetail(post, profileUser.displayName, profileUser.username);
+                            openPostDetail(post, profileUser.displayName, profileUser.username, account);
                         };
                         userPostsList.appendChild(postEl);
                     });
@@ -511,16 +747,102 @@
             }
         }
 
-        async function loadNotifications() {
-            const notiWindow = document.getElementById('notificationWindow');
-            const notiBody = document.getElementById('notiBody');
+        // 統合タイムラインウィンドウを開く
+        function openUnifiedTimeline() {
+            const winId = 'timeline-unified';
+            let win = document.getElementById(winId);
+            if (win) {
+                bringToFront(win);
+                return;
+            }
+
+            win = document.createElement('div');
+            win.id = winId;
+            win.className = 'timeline';
+            win.innerHTML = `
+                <div class="window-header">
+                    <h2>統合タイムライン</h2>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="minimize-btn" onclick="document.getElementById('timeline-unified').style.display='none'; syncTaskbar();">_</span>
+                        <span class="close-btn">×</span>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button onclick="loadUnifiedTimeline()">更新</button>
+                    <div class="refresh-controls">
+                        <button id="autoRefreshToggleBtn" onclick="toggleAutoRefresh()" style="background: #1C84F5; color:white; border:none; border-radius:4px;">自動更新: 開始</button>
+                        <input type="number" id="refreshIntervalInput" value="30" style="width: 40px; padding: 2px;"> 秒
+                    </div>
+                </div>
+                <div class="posts-list" style="flex:1; overflow-y:auto; padding: 0 15px;">読み込み中...</div>
+                <div class="resize-handle"></div>
+            `;
+            document.body.appendChild(win);
+            makeDraggable(win.querySelector('.window-header'), win);
+            makeResizable(win);
+            win.querySelector('.close-btn').onclick = () => { win.remove(); syncTaskbar(); };
+            loadUnifiedTimeline();
+            syncTaskbar();
+        }
+
+        // 自動更新のトグル
+        function toggleAutoRefresh() {
+            isAutoRefreshOn = !isAutoRefreshOn;
+            const btn = document.getElementById('autoRefreshToggleBtn');
+            const intervalInput = document.getElementById('refreshIntervalInput');
+            
+            if (isAutoRefreshOn) {
+                btn.innerText = '自動更新: 停止';
+                btn.style.background = '#dc2626';
+                intervalInput.disabled = true;
+                const seconds = parseInt(intervalInput.value) || 30;
+                refreshTimer = setInterval(loadUnifiedTimeline, seconds * 1000);
+                showNotificationToast(`自動更新を ${seconds}秒間隔で開始しました`);
+            } else {
+                btn.innerText = '自動更新: 開始';
+                btn.style.background = '#1C84F5';
+                intervalInput.disabled = false;
+                if (refreshTimer) clearInterval(refreshTimer);
+                showNotificationToast("自動更新を停止しました");
+            }
+        }
+
+        async function loadNotifications(account) {
+            const winId = `noti-${account.id}`;
+            let notiWindow = document.getElementById(winId);
+            
+            if (!notiWindow) {
+                notiWindow = document.createElement('div');
+                notiWindow.id = winId;
+                notiWindow.className = 'notification-window ' + getAccountColorClass(account.id);
+                notiWindow.innerHTML = `
+                    <div class="window-header">
+                        <h2>通知 (${account.displayName})</h2>
+                        <div style="display: flex; align-items: center;">
+                            <span class="minimize-btn" onclick="this.closest('.notification-window').style.display='none'; syncTaskbar();">_</span>
+                            <span class="close-btn">×</span>
+                        </div>
+                    </div>
+                    <div class="noti-body detail-body"></div>
+                    <div class="resize-handle"></div>
+                `;
+                document.body.appendChild(notiWindow);
+                // 通知ウィンドウの初期位置をアカウントに合わせて設定
+                notiWindow.style.left = (getAccountBaseLeft(account.id) + 50) + 'px';
+                notiWindow.style.top = '50px';
+                makeDraggable(notiWindow.querySelector('.window-header'), notiWindow);
+                makeResizable(notiWindow);
+                notiWindow.querySelector('.close-btn').onclick = () => { notiWindow.remove(); syncTaskbar(); };
+            }
+
+            const notiBody = notiWindow.querySelector('.noti-body');
             notiWindow.style.display = 'flex';
             bringToFront(notiWindow);
             
             notiBody.innerHTML = '読み込み中...';
 
             try {
-                const response = await fetch('/api/notifications');
+                const response = await fetch('/api/notifications', { accountId: account.id });
                 const data = await response.json();
 
                 // レスポンス構造 { notifications: [...] } に対応
@@ -545,19 +867,20 @@
                     };
                     
                     const actorName = n.actor?.displayName || (n.actors && n.actors[0]?.displayName) || '誰か';
+                    const actorUsername = n.actor?.username || (n.actors && n.actors[0]?.username) || '';
                     const dateStr = new Date(n.createdAt).toLocaleString();
                     const actorAvatar = fixAvatarUrl(n.actor?.avatarUrl || (n.actors && n.actors[0]?.avatarUrl));
 
                     div.innerHTML = `
                         <div style="display:flex; gap:10px; align-items:center;">
-                            <img src="${actorAvatar}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;">
+                            <img src="${actorAvatar}" class="toast-clickable" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" onclick="showUserProfile('${actorUsername}')">
                             <div style="flex:1;">
                                 <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom: 4px;">
                                     <strong>${typeMap[n.type.toUpperCase()] || n.type}</strong>
                                     <small style="color:#888; font-size: 0.7rem;">${dateStr}</small>
                                 </div>
-                                <div style="color:#555;">${actorName} さんから</div>
-                                ${n.post ? `<div style="font-size:0.8rem; color:#777; margin-top:5px; border-left:2px solid #ddd; padding-left:8px; font-style:italic;">${n.post.content?.substring(0, 40) || ''}...</div>` : ''}
+                                <div style="color:#555;"><strong class="toast-clickable" onclick="showUserProfile('${actorUsername}')">${actorName}</strong> さんから</div>
+                                ${n.post ? `<div class="toast-clickable" onclick="openPostById('${n.post.id}')" style="font-size:0.8rem; color:#777; margin-top:5px; border-left:2px solid #ddd; padding-left:8px; font-style:italic;">${n.post.content?.substring(0, 40) || ''}...</div>` : ''}
                             </div>
                         </div>
                     `;
@@ -628,13 +951,13 @@
                 if (!content) return alert('内容を入力してください');
 
                 try {
-                    const result = await createPost(content, postId);
+                    const result = await createPost(content, postId, null, account.id);
                     if (result.error) {
                         alert('引用に失敗しました: ' + result.error);
                     } else {
                         composeWindow.remove();
                         syncTaskbar();
-                        loadTimeline();
+                        loadTimeline(account);
                     }
                 } catch (error) {
                     alert('通信エラーが発生しました');
@@ -643,11 +966,12 @@
         }
 
         // 返信ウィンドウを開く関数
-        async function handleReply(event, postId) {
+        async function handleReply(event, postId, accountId) {
             event.stopPropagation();
+            const account = accounts.find(a => a.id === accountId) || getActiveAccount();
             
             const composeWindow = document.createElement('div');
-            composeWindow.className = 'compose-window';
+            composeWindow.className = 'compose-window ' + getAccountColorClass(account.id);
             composeWindow.style.display = 'flex';
             composeWindow.style.left = (250 + Math.random() * 50) + 'px';
             composeWindow.style.top = (250 + Math.random() * 50) + 'px';
@@ -684,28 +1008,29 @@
                 const content = composeWindow.querySelector('#replyText').value.trim();
                 if (!content) return alert('内容を入力してください');
 
-                const result = await createPost(content, null, postId); // quotedPostId は null, parentId に postId を指定
+                const result = await createPost(content, null, postId, account.id);
                 if (result.error) {
                     alert('返信に失敗しました: ' + result.error);
                 } else {
                     composeWindow.remove();
                     syncTaskbar();
-                    loadTimeline();
+                    loadTimeline(account);
                 }
             };
         }
 
         // 新規カロート（投稿）ウィンドウを開く関数
-        function openComposeWindow() {
+        function openComposeWindow(account) {
+            if (!account) account = getActiveAccount();
             const composeWindow = document.createElement('div');
-            composeWindow.className = 'compose-window';
+            composeWindow.className = 'compose-window ' + getAccountColorClass(account.id);
             composeWindow.style.display = 'flex';
-            composeWindow.style.left = (300 + Math.random() * 50) + 'px';
-            composeWindow.style.top = (200 + Math.random() * 50) + 'px';
+            composeWindow.style.left = '350px';
+            composeWindow.style.top = '150px';
             
             composeWindow.innerHTML = `
                 <div class="window-header">
-                    <h2>新規カロート</h2>
+                    <h2>新規カロート (${account.displayName})</h2>
                     <div style="display: flex; align-items: center;">
                         <span class="minimize-btn" onclick="this.closest('.compose-window').style.display='none'; syncTaskbar();">_</span>
                         <span class="close-btn">×</span>
@@ -735,26 +1060,37 @@
                 const content = composeWindow.querySelector('#postText').value.trim();
                 if (!content) return alert('内容を入力してください');
 
-                const result = await createPost(content); // quotedPostIdを渡さない（nullになる）
+                const result = await createPost(content, null, null, account.id);
                 if (result.error) {
                     alert('投稿に失敗しました: ' + result.error);
                 } else {
                     composeWindow.remove();
                     syncTaskbar();
-                    loadTimeline();
+                    loadTimeline(account);
                 }
             };
         }
 
-        async function handleAction(event, postId, action) {
+        // createPost 関数をアカウントID対応に修正
+        async function createPost(content, quotedPostId = null, parentId = null, accountId = null) {
+            const response = await fetch('/api/posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content, quotedPostId, parentId }),
+                accountId: accountId
+            });
+            return await response.json();
+        }
+
+        async function handleAction(event, postId, action, accountId) {
             event.stopPropagation();
             try {
-                const response = await fetch(`/api/posts/${postId}/${action}`, { method: 'POST' });
+                const response = await fetch(`/api/posts/${postId}/${action}`, { method: 'POST', accountId });
                 const result = await response.json();
                 if (result.error) {
                     alert('エラー: ' + result.error);
                 } else {
-                    loadTimeline(); // 成功したら表示を更新
+                    loadUnifiedTimeline();
                 }
             } catch (error) {
                 console.error('Action failed:', error);
@@ -763,7 +1099,7 @@
         }
 
         function bringToFront(target) {
-            document.querySelectorAll('.timeline, .detail-window, .profile-window, .notification-window, .compose-window').forEach(w => {
+            document.querySelectorAll('.timeline, .detail-window, .profile-window, .notification-window, .compose-window, .window-base').forEach(w => {
                 w.style.zIndex = 10;
             });
             target.style.zIndex = 30;
@@ -853,12 +1189,10 @@
         if (savedWallpaper) document.getElementById('desktop').style.backgroundImage = `url('${savedWallpaper}')`;
 
         // アイコンからアプリを起動・前面化する
-        function toggleApp(id) {
-            const win = document.getElementById(id);
-            if (win.style.display === 'none' || !win.style.display) {
-                if (id === 'notificationWindow') loadNotifications();
-            }
-            bringToFront(win);
+        function toggleApp(type) {
+            if (type === 'timelineWindow') openUnifiedTimeline();
+            // 通知はアカウントごとに別ウィンドウのまま（混合すると混乱するため）
+            if (type === 'notificationWindow') accounts.forEach(acc => loadNotifications(acc));
             syncTaskbar();
         }
 
@@ -867,31 +1201,46 @@
             const container = document.getElementById('taskbarWindows');
             container.innerHTML = '';
             
-            const windowConfigs = [
-                { selector: '#timelineWindow', title: 'タイムライン' },
-                { selector: '#notificationWindow', title: '通知' }
-            ];
+            const groups = { system: [], blue: [], red: [] };
 
-            // 静的なウィンドウ
-            windowConfigs.forEach(conf => {
-                const el = document.querySelector(conf.selector);
-                if (el) {
-                    createTaskItem(conf.title, el);
+            // すべてのウィンドウ要素を一度に走査
+            const windows = document.querySelectorAll('.timeline, .notification-window, .detail-window, .compose-window, .profile-window');
+
+            windows.forEach(el => {
+                if (el.style.display !== 'none') {
+                    const title = el.querySelector('h2')?.innerText || 'ウィンドウ';
+                    const item = { title, el };
+
+                    // アカウントカラーのクラスに基づいてグループ分け
+                    if (el.classList.contains('acc-blue')) {
+                        groups.blue.push(item);
+                    } else if (el.classList.contains('acc-red')) {
+                        groups.red.push(item);
+                    } else {
+                        groups.system.push(item);
+                    }
                 }
             });
 
-            // 動的なウィンドウ（詳細、投稿、プロフィール）
-            document.querySelectorAll('.detail-window, .compose-window, .profile-window').forEach(el => {
-                const title = el.querySelector('h2').innerText;
-                createTaskItem(title, el);
-            });
+            // グループごとに描画
+            if (groups.system.length > 0) renderGroup('SYSTEM', groups.system, '#888');
+            if (groups.blue.length > 0) renderGroup(accounts[0]?.displayName || 'ACCOUNT 1', groups.blue, '#1C84F5');
+            if (groups.red.length > 0) renderGroup(accounts[1]?.displayName || 'ACCOUNT 2', groups.red, '#dc2626');
 
-            function createTaskItem(title, target) {
-                const btn = document.createElement('button');
-                btn.className = 'taskbar-item';
-                btn.innerText = title;
-                btn.onclick = () => bringToFront(target);
-                container.appendChild(btn);
+            function renderGroup(label, items, color) {
+                const header = document.createElement('div');
+                header.style.cssText = `font-size: 0.65rem; opacity: 0.6; margin: 10px 0 3px 5px; font-weight: bold; color: ${color};`;
+                header.innerText = label;
+                container.appendChild(header);
+
+                items.forEach(item => {
+                    const btn = document.createElement('button');
+                    btn.className = 'taskbar-item';
+                    if (color && color !== '#888') btn.style.borderLeft = `3px solid ${color}`;
+                    btn.innerText = item.title;
+                    btn.onclick = () => bringToFront(item.el);
+                    container.appendChild(btn);
+                });
             }
         }
 
@@ -903,27 +1252,44 @@
 
         // ユーザー情報の読み込み
         async function loadUserInfo() {
-            try {
-                const response = await fetch('/api/me');
-                const user = await response.json();
-                const avatarImg = user.avatarUrl ? `<img src="${fixAvatarUrl(user.avatarUrl)}" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px; border:1px solid rgba(255,255,255,0.5);">` : '';
-                document.getElementById('taskbarUser').innerHTML = `${avatarImg}${user.displayName} (${user.username})`;
-            } catch (e) {
-                console.error('Failed to load user info:', e);
-                document.getElementById('taskbarUser').innerText = 'ゲスト';
+            const left = document.getElementById('taskbarUserLeft');
+            const right = document.getElementById('taskbarUserRight');
+            
+            if (accounts.length === 0) {
+                right.innerText = 'ゲスト';
+                left.style.display = 'none';
+                return;
+            }
+
+            const getUserHtml = (user) => {
+                const avatarImg = `<img src="${fixAvatarUrl(user.avatarUrl)}" style="width:24px; height:24px; border-radius:50%; vertical-align:middle; margin-right:8px; border:1px solid rgba(255,255,255,0.5);">`;
+                return `${avatarImg}${user.displayName} (${user.username}) ▾`;
+            };
+
+            if (accounts.length === 1) {
+                // アカウントが1つの時は右側のみに表示
+                left.style.display = 'none';
+                left.innerHTML = '';
+                right.innerHTML = getUserHtml(accounts[0]);
+            } else if (accounts.length >= 2) {
+                // アカウントが2つ以上の時
+                // 1つ目のアカウント（青）を左側に表示
+                left.style.display = 'block';
+                left.innerHTML = getUserHtml(accounts[0]);
+                
+                // 2つ目のアカウント（赤）を右側に表示
+                right.innerHTML = getUserHtml(accounts[1]);
             }
         }
 
-        // 手動更新ボタン
-        document.getElementById('refreshBtn').addEventListener('click', loadTimeline);
-
         // 10秒ごとの自動更新処理
         setInterval(() => {
-            const isEnabled = document.getElementById('autoRefreshCheck').checked;
-            if (isEnabled) {
-                console.log('自動更新を実行中...');
-                loadTimeline();
-            }
+            // すべてのアカウントのタイムラインを更新
+            accounts.forEach(acc => {
+                if (document.getElementById(`timeline-${acc.id}`)) {
+                    loadTimeline(acc);
+                }
+            });
         }, 10000);
 
         // 共通のドラッグロジック
@@ -979,24 +1345,89 @@
             });
         }
 
-        makeDraggable(document.getElementById('dragHandle'), document.getElementById('timelineWindow'));
-        makeDraggable(document.getElementById('notiDragHandle'), document.getElementById('notificationWindow'));
-        makeResizable(document.getElementById('timelineWindow'));
-        makeResizable(document.getElementById('notificationWindow'));
+        // 通知ポップアップを表示する関数
+        function showNotificationToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = 'notification-toast' + (isError ? ' error-toast' : '');
+            const icon = isError ? '⚠️' : '🔔';
+            toast.innerHTML = `<span style="font-size: 1.2rem;">${icon}</span> <div>${message}</div>`;
+            document.body.appendChild(toast);
 
-        document.getElementById('closeTimeline').addEventListener('click', () => {
-            document.getElementById('timelineWindow').style.display = 'none';
-            syncTaskbar();
-        });
-        document.getElementById('closeNoti').addEventListener('click', () => {
-            document.getElementById('notificationWindow').style.display = 'none';
-            syncTaskbar();
-        });
+            // 5秒後にフェードアウトして削除
+            setTimeout(() => {
+                toast.classList.add('toast-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // IDから投稿詳細を開くヘルパー
+        async function openPostById(id, accountId) {
+            try {
+                // 304エラー（キャッシュ）を回避するためにタイムスタンプを付与
+                const res = await fetch(`/api/posts/${id}?t=${Date.now()}`, { accountId });
+                const data = await safeJson(res);
+                if (data.error) {
+                    if (data.error === "リクエストが多すぎます") showNotificationToast("リクエストが多すぎます。少し時間を置いてからお試しください。", true);
+                    return;
+                }
+                // APIの戻り値が { post: {...}, user: {...} } のようにネストされている場合に対応
+                const postObj = data.post || data;
+                const userObj = postObj.user || postObj.author || data.user || {};
+                openPostDetail(postObj, userObj.displayName || 'Unknown', userObj.username || 'unknown', accounts.find(a => a.id === accountId));
+            } catch (e) { console.error('Failed to open post from notification:', e); }
+        }
+
+        let lastNotificationIds = {}; // 各アカウントの最新通知IDを個別に追跡
+        // 新着通知をチェックするポーリング関数
+        async function pollNotifications() {
+            for (const acc of accounts) {
+                try {
+                    const response = await fetch(`/api/notifications?t=${Date.now()}`, { accountId: acc.id });
+                    const data = await safeJson(response);
+                    
+                    if (data.error) continue;
+
+                    const notifications = data.notifications || [];
+                    if (notifications.length > 0) {
+                        const latest = notifications[0];
+                        
+                        // 初回チェック時はIDを保存するだけでポップアップは出さない
+                        if (lastNotificationIds[acc.id] === undefined) { 
+                            lastNotificationIds[acc.id] = latest.id; 
+                            continue; 
+                        }
+                        
+                        // IDが前回と異なる＝新しい通知がある場合
+                        if (latest.id !== lastNotificationIds[acc.id]) {
+                            lastNotificationIds[acc.id] = latest.id;
+                            const actorName = latest.actor?.displayName || '誰か';
+                            const actorUsername = latest.actor?.username || '';
+                            const typeMap = { 'LIKE': 'いいね', 'REKAROT': 'リカロート', 'MENTION': 'メンション', 'FOLLOW': 'フォロー', 'REPLY': '返信' };
+                            const typeLabel = typeMap[latest.type.toUpperCase()] || latest.type;
+                            
+                            let msg = `[${acc.displayName}] <strong class="toast-clickable" onclick="showUserProfile('${actorUsername}', ${JSON.stringify(acc).replace(/"/g, '&quot;')})">${actorName}</strong> さんから<strong>${typeLabel}</strong>がありました`;
+                            if (latest.post?.content) {
+                                msg += `<div class="toast-content-preview toast-clickable" onclick="openPostById('${latest.post.id}', '${acc.id}')">${latest.post.content.substring(0, 30)}...</div>`;
+                            }
+                            showNotificationToast(msg);
+                        }
+                    }
+                } catch (e) { console.error(`Poll failed for ${acc.username}:`, e); }
+            }
+        }
 
         setInterval(updateClock, 1000);
-        loadUserInfo();
-        syncTaskbar();
-        loadTimeline();
+
+        // 初期化してから実行
+        initKaronode().then(() => {
+            loadUserInfo();
+            syncTaskbar();
+            renderDesktopShortcuts();
+        });
+
+        // 30秒ごとに通知をチェック
+        setInterval(pollNotifications, 30000);
+        pollNotifications();
     </script>
 </body>
 </html>
