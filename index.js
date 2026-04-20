@@ -16,6 +16,14 @@ const ACCOUNT_FILE = path.join(__dirname, 'account.json');
 // 304 Not Modified による更新の不具合を防ぐため、ETagを無効化し常に最新データを取得させる
 app.set('etag', false);
 
+// すべてのAPIリクエストに対してキャッシュを無効化するヘッダーを付与
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // account.json からプライマリアカウントを取得するヘルパー
 function getPrimaryAccount() {
   if (!fs.existsSync(ACCOUNT_FILE)) return null;
@@ -256,6 +264,42 @@ app.post('/api/follow/:userId', async (req, res) => {
 });
 
 /**
+ * 投稿検索用API
+ */
+app.get('/api/search/posts', async (req, res) => {
+  try {
+    const { token } = await getAuthenticatedContext(req);
+    const { q, sort, limit, hasMedia } = req.query;
+
+    const response = await axios.get(`https://api.karotter.com/api/search/posts`, {
+      params: { q, sort: sort || 'latest', limit: limit || 20, hasMedia },
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * ユーザー検索用API
+ */
+app.get('/api/search/users', async (req, res) => {
+  try {
+    const { token } = await getAuthenticatedContext(req);
+    const { q, limit } = req.query;
+
+    const response = await axios.get(`https://api.karotter.com/api/search/users`, {
+      params: { q, limit: limit || 20 },
+      headers: token ? { Authorization: `Bearer ${token}` } : {}
+    });
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * 特定の投稿を取得するAPI
  */
 app.get('/api/posts/:id', async (req, res) => {
@@ -374,6 +418,11 @@ app.post('/login', async (req, res) => {
 
     // 重複を削除して新しい情報を追加（常に最新のパスワードとトークンを保持）
     currentAccounts = currentAccounts.filter(acc => (acc.username || acc.identifier) !== identifier);
+
+    // アカウント制限（最大2つ）のチェック
+    if (currentAccounts.length >= 2) {
+      return res.status(403).json({ error: '現在のアカウント数は最大（2つ）です。これ以上追加することはできません。' });
+    }
 
     const newAccount = {
       id: loginData.user?.id || 'main',
