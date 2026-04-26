@@ -21,11 +21,12 @@
         /* サイドタスクバースタイル */
         .side-taskbar {
             position: fixed; top: 40px; left: 0; bottom: 0; width: 160px;
-            background: #2d3748; color: white; z-index: 999;
+            background: #fff; color: #000; z-index: 999;
             padding: 15px 10px; display: flex; flex-direction: column; gap: 8px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.1);
             overflow-y: auto;
         }
+        body.dark-mode .side-taskbar { background: #000; color: #fff; }
 
         /* デスクトップエリア（壁紙が表示される領域） */
         .desktop {
@@ -73,18 +74,35 @@
 
         .taskbar-item {
             background: rgba(255,255,255,0.1); border: none; color: white;
+            background: rgba(0, 0, 0, 0.05); border: none; color: inherit;
             padding: 10px 12px; border-radius: 6px; cursor: pointer;
             text-align: left; width: 100%; font-size: 0.85rem;
             white-space: nowrap; transition: background 0.2s; overflow: hidden; text-overflow: ellipsis;
         }
         .taskbar-item:hover { background: rgba(255,255,255,0.2); }
+        .taskbar-item:hover { background: rgba(0, 0, 0, 0.1); }
+        body.dark-mode .taskbar-item { background: rgba(255, 255, 255, 0.1); }
+        body.dark-mode .taskbar-item:hover { background: rgba(255, 255, 255, 0.2); }
+
+        /* ウィンドウのアニメーション */
+        @keyframes windowOpen { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+        @keyframes windowClose { from { opacity: 1; transform: scale(1) translateY(0); } to { opacity: 0; transform: scale(0.9) translateY(10px); } }
+        @keyframes windowMinimize { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.8) translateX(-100px); } }
+
+        .window-closing { animation: windowClose 0.2s ease-in forwards !important; pointer-events: none; }
+        .window-minimizing { animation: windowMinimize 0.2s ease-in forwards !important; pointer-events: none; }
+
+        /* アニメーション無効化時の処理 */
+        body.animations-disabled .window-base, body.animations-disabled .timeline, body.animations-disabled .detail-window,
+        body.animations-disabled .profile-window, body.animations-disabled .notification-window,
+        body.animations-disabled .compose-window, body.animations-disabled .search-window { animation: none !important; }
 
         /* アプリのようなウィンドウのスタイル */
         .window-base, .timeline, .detail-window, .profile-window, .notification-window, .compose-window, .search-window { 
             position: absolute; top: 60px; left: 180px; width: 450px; height: 600px; 
             background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             display: flex; flex-direction: column; overflow: hidden; border: 1px solid #d1d5db;
-            z-index: 10;
+            z-index: 10; animation: windowOpen 0.2s ease-out forwards;
         }
         .detail-window, .profile-window, .notification-window, .compose-window { height: auto; max-height: 500px; display: none; width: 400px; }
         .detail-window { top: 150px; left: 550px; z-index: 20; }
@@ -119,10 +137,6 @@
         .acc-blue .window-header { background: #1C84F5; }
         .acc-red .window-header { background: #dc2626; }
         .acc-red .post-user { color: #dc2626; }
-
-        /* 投稿ごとのアカウント識別バー */
-        .post.border-acc-blue { border-left: 4px solid #1C84F5; padding-left: 11px; }
-        .post.border-acc-red { border-left: 4px solid #dc2626; padding-left: 11px; }
         .refresh-controls { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
 
         /* アバターのスタイル */
@@ -153,6 +167,32 @@
         /* 検索固有のスタイル */
         .search-window h3 { margin: 15px 0 10px; font-size: 0.9rem; color: #4b5563; }
         .search-input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+
+        /* ダークテーマ用スタイル */
+        body.dark-mode .window-base,
+        body.dark-mode .timeline,
+        body.dark-mode .detail-window,
+        body.dark-mode .profile-window,
+        body.dark-mode .notification-window,
+        body.dark-mode .compose-window,
+        body.dark-mode .search-window,
+        body.dark-mode .detail-body,
+        body.dark-mode .account-menu {
+            background-color: #000 !important;
+            color: #fff !important;
+        }
+        body.dark-mode .post, body.dark-mode .notification-item, body.dark-mode .account-item { border-color: #333 !important; }
+        body.dark-mode .post:hover, body.dark-mode .account-item:hover { background-color: #1a1a1a !important; }
+        body.dark-mode textarea, body.dark-mode input { background-color: #1a1a1a !important; color: #fff !important; border-color: #444 !important; }
+        body.dark-mode .controls, body.dark-mode .post-actions { background-color: #0d0d0d !important; border-color: #333 !important; }
+        body.dark-mode .notification-toast { background: #1a1a1a !important; color: #fff !important; }
+        body.dark-mode .post-user span { color: #aaa !important; }
+        body.dark-mode .post-date { color: #888 !important; }
+
+        /* ダークテーマ時にインラインスタイルで指定された背景色やボーダーを強制的に上書き */
+        body.dark-mode .detail-body section,
+        body.dark-mode .detail-body div[style*="background"],
+        body.dark-mode .detail-body h3 { background-color: #111 !important; border-color: #333 !important; }
     </style>
 </head>
 <body>
@@ -189,9 +229,44 @@
             return url;
         }
 
+        // ウィンドウ操作ヘルパー（アニメーション付き）
+        function closeWindowWithAnimation(win) {
+            if (document.body.classList.contains('animations-disabled')) {
+                if (win._refreshTimer) clearInterval(win._refreshTimer);
+                win.remove();
+                syncTaskbar();
+                return;
+            }
+            win.classList.add('window-closing');
+            win.addEventListener('animationend', () => {
+                if (win._refreshTimer) clearInterval(win._refreshTimer);
+                win.remove();
+                syncTaskbar();
+            }, { once: true });
+        }
+
+        function minimizeWindowWithAnimation(win) {
+            if (document.body.classList.contains('animations-disabled')) {
+                win.style.display = 'none';
+                syncTaskbar();
+                return;
+            }
+            win.classList.add('window-minimizing');
+            win.addEventListener('animationend', () => {
+                win.style.display = 'none';
+                win.classList.remove('window-minimizing');
+                syncTaskbar();
+            }, { once: true });
+        }
+
         // レスポンスが正しいJSONかチェックするヘルパー
         async function safeJson(response) {
             const contentType = response.headers.get("content-type");
+            // 304 Not Modified はリソースが変更されていないことを示す。
+            // fetch では response.ok が false になるため、個別に処理する。
+            if (response.status === 304) {
+                return {}; // 内容が空のため、空のオブジェクトを返して後続の処理を継続させる
+            }
             if (!response.ok) {
                 const text = await response.text();
                 throw new Error(`HTTP Error ${response.status}: ${text.substring(0, 100)}`);
@@ -204,11 +279,34 @@
             return await response.json();
         }
 
+        // アカウントごとのカスタムスタイルを動的に生成・適用する
+        function updateDynamicStyles() {
+            let styleEl = document.getElementById('dynamic-account-styles');
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = 'dynamic-account-styles';
+                document.head.appendChild(styleEl);
+            }
+            let css = '';
+            accounts.forEach((acc, idx) => {
+                const defaultColor = idx === 1 ? '#dc2626' : '#1C84F5';
+                const color = acc.color || defaultColor;
+                // クラス名にIDを含めて個別にスタイルを定義
+                css += `
+                    .acc-custom-${acc.id} .window-header { background: ${color} !important; }
+                    .acc-custom-${acc.id} .post-user { color: ${color} !important; }
+                    .post.border-acc-custom-${acc.id} { border-left: 4px solid ${color} !important; padding-left: 11px; }
+                `;
+            });
+            styleEl.innerHTML = css;
+        }
+
         // 指定したアカウントのタイムラインを読み込む
         async function loadTimeline(account) {
             const win = document.getElementById(`timeline-${account.id}`);
             const postsContainer = win?.querySelector('.posts-list');
             if (!postsContainer) return;
+            const accColorClass = `border-acc-custom-${account.id}`;
 
             try {
                 const response = await fetch(`/api/timeline?t=${Date.now()}`, { accountId: account.id });
@@ -225,7 +323,7 @@
                     const user = post.user || post.author || post;
                     const avatarUrl = fixAvatarUrl(user.avatarUrl);
                     const postEl = document.createElement('div');
-                    postEl.className = `post`;
+                    postEl.className = `post ${accColorClass}`;
                     postEl.innerHTML = `
                         <div style="display: flex; gap: 12px;">
                             <img src="${avatarUrl}" class="post-avatar" onclick="event.stopPropagation(); showUserProfile('${user.username}', ${JSON.stringify(account).replace(/"/g, '&quot;')})">
@@ -360,24 +458,21 @@
         async function initKaronode() {
             try {
                 // .device_id からIDを取得
-                const devRes = await originalFetch('/api/device-id');
+                const devRes = await originalFetch(`/api/device-id?t=${Date.now()}`);
                 const devData = await safeJson(devRes);
                 if (devData.deviceId) deviceId = devData.deviceId;
 
                 // account.json からアカウントリストを取得
-                const accRes = await originalFetch('/api/accounts');
+                const accRes = await originalFetch(`/api/accounts?t=${Date.now()}`);
                 const accData = await safeJson(accRes);
                 accounts = accData.accounts || [];
                 activeAccountId = localStorage.getItem('karonode_active_account_id') || (accounts[0]?.id);
             } catch (e) { console.error('Initialization failed:', e); }
         }
 
-        // アカウントのインデックスに基づいてCSSクラスを返す
+        // アカウント固有のCSSクラスを返す
         function getAccountColorClass(accId) {
-            const idx = accounts.findIndex(a => a.id === accId);
-            if (idx === 0) return 'acc-blue';
-            if (idx === 1) return 'acc-red';
-            return '';
+            return `acc-custom-${accId}`;
         }
 
         // アカウントのインデックスに基づいて基準となる左端の座標を返す
@@ -407,13 +502,34 @@
         function updateTaskbarStyle() {
             const taskbar = document.querySelector('.taskbar');
             if (!taskbar) return;
-            
-            if (accounts.length >= 2) {
-                // 2アカウント以上の場合は青と赤のグラデーション
-                taskbar.style.background = 'linear-gradient(90deg, #1C84F5 0%, #dc2626 100%)';
+
+            const config = JSON.parse(localStorage.getItem('karonode_taskbar_config') || '{"color1":"#1C84F5", "color2":"#dc2626", "useGradient":false, "textColor":"#ffffff"}');
+
+            if (config.useGradient) {
+                taskbar.style.background = `linear-gradient(90deg, ${config.color1} 0%, ${config.color2} 100%)`;
             } else {
-                // それ以外はデフォルトの青
-                taskbar.style.background = '#1C84F5';
+                taskbar.style.background = config.color1;
+            }
+            
+            taskbar.style.color = config.textColor || '#ffffff';
+            
+            updateDynamicStyles();
+        }
+
+        // サイドバーのスタイルを更新
+        function updateSidebarStyle() {
+            const sidebar = document.querySelector('.side-taskbar');
+            if (!sidebar) return;
+            const customBg = localStorage.getItem('karonode_side_taskbar_color');
+            const customText = localStorage.getItem('karonode_side_taskbar_text_color');
+
+            sidebar.style.backgroundColor = customBg || '';
+            
+            if (customText) {
+                sidebar.style.color = customText;
+            } else {
+                // 指定がない場合はテーマのデフォルトに任せる（CSSで設定された色）
+                sidebar.style.color = '';
             }
         }
 
@@ -436,6 +552,7 @@
                 // --- アカウントが1つの場合 ---
                 // ツール系は左
                 createShortcut(leftCol, '🖼️', '壁紙変更', () => changeWallpaper());
+                createShortcut(leftCol, '⚙️', '設定', () => openSettingsWindow());
                 
                 const acc = accounts[0];
                 createShortcut(leftCol, '🏠', `タイムライン (${acc.displayName})`, () => openTimelineWindow(acc));
@@ -446,6 +563,7 @@
             } else if (accounts.length >= 2) {
                 // --- アカウントが2つの場合 ---
                 createShortcut(leftCol, '🖼️', '壁紙変更', () => changeWallpaper());
+                createShortcut(leftCol, '⚙️', '設定', () => openSettingsWindow());
                 
                 const acc0 = accounts[0];
                 createShortcut(leftCol, '🏠', `タイムライン (${acc0.displayName})`, () => openTimelineWindow(acc0));
@@ -501,7 +619,7 @@
                 <div class="window-header">
                     <h2>投稿の詳細</h2>
                     <div style="display: flex; align-items: center;">
-                        <span class="minimize-btn" onclick="this.closest('.detail-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.detail-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -545,6 +663,7 @@
 
             // ウィンドウの初期化
             detailWindow.querySelector('.close-btn').onclick = () => { detailWindow.remove(); syncTaskbar(); };
+            detailWindow.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(detailWindow);
 
             // 親投稿を遡って取得
             if (post.parentId) {
@@ -703,7 +822,7 @@
                 <div class="window-header">
                     <h2>プロフィール: @${username}</h2>
                     <div style="display: flex; align-items: center;">
-                        <span class="minimize-btn" onclick="this.closest('.profile-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.profile-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -721,6 +840,7 @@
                 profileWindow.remove();
                 syncTaskbar();
             };
+            profileWindow.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(profileWindow);
 
             const profileBody = profileWindow.querySelector('.profile-body');
 
@@ -813,7 +933,7 @@
                 <div class="window-header">
                     <h2>タイムライン (${account.displayName})</h2>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span class="minimize-btn" onclick="this.closest('.timeline').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.timeline'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -835,6 +955,7 @@
                 win.remove();
                 syncTaskbar();
             };
+            win.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(win);
             loadTimeline(account);
             bringToFront(win);
             syncTaskbar();
@@ -884,7 +1005,7 @@
                 <div class="window-header">
                     <h2>検索 (${account.displayName})</h2>
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span class="minimize-btn" onclick="this.closest('.search-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.search-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -910,6 +1031,7 @@
             makeDraggable(win.querySelector('.window-header'), win);
             makeResizable(win);
             win.querySelector('.close-btn').onclick = () => { win.remove(); syncTaskbar(); };
+            win.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(win);
 
             const qInput = win.querySelector('.search-q');
             const execBtn = win.querySelector('.search-exec-btn');
@@ -1028,7 +1150,7 @@
                     <div class="window-header">
                         <h2>通知 (${account.displayName})</h2>
                         <div style="display: flex; align-items: center;">
-                            <span class="minimize-btn" onclick="this.closest('.notification-window').style.display='none'; syncTaskbar();">_</span>
+                            <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.notification-window'))">_</span>
                             <span class="close-btn">×</span>
                         </div>
                     </div>
@@ -1042,6 +1164,7 @@
                 makeDraggable(notiWindow.querySelector('.window-header'), notiWindow);
                 makeResizable(notiWindow);
                 notiWindow.querySelector('.close-btn').onclick = () => { notiWindow.remove(); syncTaskbar(); };
+                notiWindow.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(notiWindow);
             }
 
             const notiBody = notiWindow.querySelector('.noti-body');
@@ -1134,7 +1257,7 @@
                 <div class="window-header">
                     <h2>引用を投稿</h2>
                     <div style="display: flex; align-items: center;">
-                        <span class="minimize-btn" onclick="this.closest('.compose-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.compose-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -1157,6 +1280,7 @@
                 composeWindow.remove();
                 syncTaskbar();
             };
+            composeWindow.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(composeWindow);
             
             composeWindow.querySelector('#submitQuote').onclick = async () => {
                 const content = composeWindow.querySelector('#quoteText').value.trim();
@@ -1193,7 +1317,7 @@
                 <div class="window-header">
                     <h2>返信を投稿</h2>
                     <div style="display: flex; align-items: center;">
-                        <span class="minimize-btn" onclick="this.closest('.compose-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.compose-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -1216,6 +1340,7 @@
                 composeWindow.remove();
                 syncTaskbar();
             };
+            composeWindow.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(composeWindow);
             
             composeWindow.querySelector('#submitReply').onclick = async () => {
                 const content = composeWindow.querySelector('#replyText').value.trim();
@@ -1246,7 +1371,7 @@
                 <div class="window-header">
                     <h2>新規カロート (${account.displayName})</h2>
                     <div style="display: flex; align-items: center;">
-                        <span class="minimize-btn" onclick="this.closest('.compose-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.compose-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -1269,6 +1394,7 @@
                 composeWindow.remove();
                 syncTaskbar();
             };
+            composeWindow.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(composeWindow);
             
             composeWindow.querySelector('#submitPost').onclick = async () => {
                 const content = composeWindow.querySelector('#postText').value.trim();
@@ -1335,7 +1461,7 @@
                 <div class="window-header">
                     <h2>壁紙設定</h2>
                     <div style="display: flex; align-items: center;">
-                        <span class="minimize-btn" onclick="this.closest('.detail-window').style.display='none'; syncTaskbar();">_</span>
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.detail-window'))">_</span>
                         <span class="close-btn">×</span>
                     </div>
                 </div>
@@ -1360,6 +1486,7 @@
 
             const closeBtn = win.querySelector('.close-btn');
             closeBtn.onclick = () => { win.remove(); syncTaskbar(); };
+            closeBtn.onclick = () => closeWindowWithAnimation(win);
 
             const listContainer = win.querySelector('#wallpaperList');
             const refreshList = async () => {
@@ -1400,6 +1527,254 @@
             refreshList();
         }
 
+        // タスクバー設定を保存して適用
+        function saveTaskbarSettings() {
+            const color1 = document.getElementById('tbColor1').value;
+            const color2 = document.getElementById('tbColor2').value;
+            const textColor = document.getElementById('tbTextColor').value;
+            const useGradient = document.getElementById('tbGradientCheck').checked;
+            
+            const config = { color1, color2, useGradient, textColor };
+            localStorage.setItem('karonode_taskbar_config', JSON.stringify(config));
+            updateTaskbarStyle();
+        }
+
+        // サイドバーの色を保存
+        function saveSidebarColor(color) {
+            if (!color) {
+                localStorage.removeItem('karonode_side_taskbar_color');
+            } else {
+                localStorage.setItem('karonode_side_taskbar_color', color);
+            }
+            updateSidebarStyle();
+        }
+
+        // サイドバーの文字色を保存
+        function saveSidebarTextColor(color) {
+            if (!color) {
+                localStorage.removeItem('karonode_side_taskbar_text_color');
+            } else {
+                localStorage.setItem('karonode_side_taskbar_text_color', color);
+            }
+            updateSidebarStyle();
+        }
+
+        // ダークテーマの切り替え
+        function toggleDarkMode(enabled) {
+            const customText = localStorage.getItem('karonode_side_taskbar_text_color');
+            const picker = document.getElementById('sidebarTextColorPicker');
+
+            if (enabled) {
+                document.body.classList.add('dark-mode');
+                // ダークテーマ有効時、文字色が黒(#000000)なら白(#ffffff)に自動変更
+                if (customText?.toLowerCase() === '#000000') {
+                    localStorage.setItem('karonode_side_taskbar_text_color', '#ffffff');
+                    if (picker) picker.value = '#ffffff';
+                }
+            } else {
+                document.body.classList.remove('dark-mode');
+                // ダークテーマ無効時、文字色が白(#ffffff)なら黒(#000000)に自動変更
+                if (customText?.toLowerCase() === '#ffffff') {
+                    localStorage.setItem('karonode_side_taskbar_text_color', '#000000');
+                    if (picker) picker.value = '#000000';
+                }
+            }
+            localStorage.setItem('karonode_dark_mode', enabled);
+            updateSidebarStyle();
+        }
+
+        // アニメーションの切り替え
+        function toggleAnimations(enabled) {
+            if (!enabled) {
+                document.body.classList.add('animations-disabled');
+            } else {
+                document.body.classList.remove('animations-disabled');
+            }
+            localStorage.setItem('karonode_animations_enabled', enabled);
+        }
+
+        // アカウントの色を更新
+        function updateAccColor(accId, color) {
+            const acc = accounts.find(a => String(a.id) === String(accId));
+            if (acc) acc.color = color;
+        }
+
+        // 設定ウィンドウを開く
+        function openSettingsWindow() {
+            const winId = 'settings-window';
+            let win = document.getElementById(winId);
+            if (win) {
+                bringToFront(win);
+                return;
+            }
+
+            win = document.createElement('div');
+            win.id = winId;
+            win.className = 'window-base';
+            win.style.width = '420px';
+            win.style.height = 'auto';
+            win.style.maxHeight = '80vh';
+            win.style.left = '300px';
+            win.style.top = '100px';
+            win.style.overflowY = 'auto';
+            win.setAttribute('data-account-id', 'system');
+
+            win.innerHTML = `
+                <div class="window-header">
+                    <h2>⚙️ 設定</h2>
+                    <div style="display: flex; align-items: center;">
+                        <span class="minimize-btn" onclick="minimizeWindowWithAnimation(this.closest('.window-base'))">_</span>
+                        <span class="close-btn">×</span>
+                    </div>
+                </div>
+                <div class="detail-body">
+                    <section style="margin-bottom: 20px; padding: 10px; background: #f8fafc; border-radius: 8px;">
+                        <h3 style="font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #1C84F5;">外観・テーマ設定</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="animationCheck" onchange="toggleAnimations(this.checked)">
+                                <label for="animationCheck" style="font-size: 0.85rem;">ウィンドウアニメーションを有効にする</label>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                                <input type="checkbox" id="darkModeCheck" onchange="toggleDarkMode(this.checked)">
+                                <label for="darkModeCheck" style="font-size: 0.85rem; font-weight: bold;">ダークテーマを有効にする</label>
+                            </div>
+                            <div style="border-top: 1px solid #eee; padding-top: 10px;"></div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <label style="font-size: 0.85rem;">サイドバー背景色:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <button class="action-btn" style="font-size: 0.7rem; padding: 2px 5px;" onclick="saveSidebarColor(null)">リセット</button>
+                                    <input type="color" id="sidebarColorPicker" onchange="saveSidebarColor(this.value)">
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <label style="font-size: 0.85rem;">サイドバー文字色:</label>
+                                <div style="display: flex; gap: 5px;">
+                                    <button class="action-btn" style="font-size: 0.7rem; padding: 2px 5px;" onclick="saveSidebarTextColor(null)">リセット</button>
+                                    <input type="color" id="sidebarTextColorPicker" onchange="saveSidebarTextColor(this.value)">
+                                </div>
+                            </div>
+                            <div style="border-top: 1px solid #eee; padding-top: 10px;"></div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <label style="font-size: 0.85rem;">タスクバー メインカラー:</label>
+                                <input type="color" id="tbColor1" onchange="saveTaskbarSettings()">
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <label style="font-size: 0.85rem;">サブカラー (グラデーション用):</label>
+                                <input type="color" id="tbColor2" onchange="saveTaskbarSettings()">
+                            </div>
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <label style="font-size: 0.85rem;">タスクバー 文字色:</label>
+                                <input type="color" id="tbTextColor" onchange="saveTaskbarSettings()">
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="tbGradientCheck" onchange="saveTaskbarSettings()">
+                                <label for="tbGradientCheck" style="font-size: 0.85rem;">グラデーションを有効にする</label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section style="margin-bottom: 20px;">
+                        <h3 style="font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #1C84F5;">アカウント管理</h3>
+                        <div id="settingsAccountList"></div>
+                    </section>
+                    <section>
+                        <h3 style="font-size: 1rem; border-bottom: 1px solid #eee; padding-bottom: 5px; color: #1C84F5;">システム情報</h3>
+                        <div style="font-size: 0.8rem; color: #666; margin: 10px 0;">
+                            <strong>Device ID:</strong> <span style="font-family: monospace;">${deviceId}</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button class="action-btn" onclick="localStorage.removeItem('karonode_wallpaper'); location.reload();">🖼️ 壁紙をデフォルトに戻す</button>
+                            <button class="action-btn" style="color: #dc2626; border-color: #fca5a5;" onclick="if(confirm('全てのログイン情報と設定を消去して再起動しますか？')) { localStorage.clear(); location.reload(); }">⚠️ 全データを初期化してログアウト</button>
+                        </div>
+                    </section>
+                </div>
+                <div class="resize-handle"></div>
+            `;
+
+            document.body.appendChild(win);
+            makeDraggable(win.querySelector('.window-header'), win);
+            makeResizable(win);
+            win.querySelector('.close-btn').onclick = () => { win.remove(); syncTaskbar(); };
+            win.querySelector('.close-btn').onclick = () => closeWindowWithAnimation(win);
+
+            // タスクバー設定の初期値をセット
+            const tbConfig = JSON.parse(localStorage.getItem('karonode_taskbar_config') || '{"color1":"#1C84F5", "color2":"#dc2626", "useGradient":false, "textColor":"#ffffff"}');
+            win.querySelector('#tbColor1').value = tbConfig.color1;
+            win.querySelector('#tbColor2').value = tbConfig.color2;
+            win.querySelector('#tbTextColor').value = tbConfig.textColor || '#ffffff';
+            win.querySelector('#tbGradientCheck').checked = tbConfig.useGradient;
+
+            // ダークテーマの状態をセット
+            win.querySelector('#darkModeCheck').checked = localStorage.getItem('karonode_dark_mode') === 'true';
+            
+            // アニメーション設定
+            const animEnabled = localStorage.getItem('karonode_animations_enabled') !== 'false';
+            win.querySelector('#animationCheck').checked = animEnabled;
+
+            // サイドバー色設定
+            win.querySelector('#sidebarColorPicker').value = localStorage.getItem('karonode_side_taskbar_color') || '#ffffff';
+            win.querySelector('#sidebarTextColorPicker').value = localStorage.getItem('karonode_side_taskbar_text_color') || (document.body.classList.contains('dark-mode') ? '#ffffff' : '#000000');
+            
+            const list = win.querySelector('#settingsAccountList');
+            accounts.forEach(acc => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f3f4f6;';
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <img src="${fixAvatarUrl(acc.avatarUrl)}" style="width:32px; height:32px; border-radius:50%; object-fit: cover;">
+                        <div>
+                            <div style="font-weight: bold; font-size: 0.85rem;">${acc.displayName}</div>
+                            <div style="font-size: 0.75rem; color: #888;">@${acc.username}</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <input type="color" value="${acc.color || (accounts.indexOf(acc) === 1 ? '#dc2626' : '#1C84F5')}" 
+                               onchange="updateAccColor('${acc.id}', this.value); saveAccountsToServer();" title="テーマカラー変更">
+                        <button class="action-btn" style="color: #dc2626; padding: 2px 8px;" onclick="removeAccountFromSettings('${acc.id}')">削除</button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+
+            bringToFront(win);
+            syncTaskbar();
+        }
+
+        // アカウント情報をサーバーへ保存
+        async function saveAccountsToServer() {
+            try {
+                await originalFetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accounts })
+                });
+                updateDynamicStyles();
+                syncTaskbar();
+            } catch (e) { console.error('Save accounts failed:', e); }
+        }
+
+        // アカウント削除用のヘルパー
+        async function removeAccountFromSettings(id) {
+            if (!confirm('このアカウントを削除しますか？')) return;
+            accounts = accounts.filter(a => String(a.id) !== String(id));
+            if (activeAccountId === id) {
+                activeAccountId = accounts.length > 0 ? accounts[0].id : null;
+                localStorage.setItem('karonode_active_account_id', activeAccountId || '');
+            }
+            
+            try {
+                await originalFetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accounts })
+                });
+                location.reload();
+            } catch (e) {
+                alert('削除に失敗しました');
+            }
+        }
+
         // 保存された壁紙があれば適用
         const savedWallpaper = localStorage.getItem('karonode_wallpaper');
         if (savedWallpaper) document.getElementById('desktop').style.backgroundImage = `url('${savedWallpaper}')`;
@@ -1420,8 +1795,8 @@
                 accounts: {} // Key: accountId, Value: array of { title, el }
             };
 
-            // Select all potential window elements
-            const windows = document.querySelectorAll('.timeline, .notification-window, .detail-window, .compose-window, .profile-window, .search-window');
+            // 全てのウィンドウ要素（基本クラス .window-base を含む）を取得
+            const windows = document.querySelectorAll('.timeline, .notification-window, .detail-window, .compose-window, .profile-window, .search-window, .window-base');
             
             windows.forEach(el => {
                 const title = el.querySelector('h2')?.innerText || 'ウィンドウ';
@@ -1447,11 +1822,8 @@
             // Render account-specific windows, ordered by the 'accounts' array
             for (const acc of accounts) {
                 if (groupedWindows.accounts[acc.id] && groupedWindows.accounts[acc.id].length > 0) {
-                    // Determine color based on getAccountColorClass, or a default if not blue/red
-                    let color = '#666'; // Default color for accounts beyond the second
-                    const accColorClass = getAccountColorClass(acc.id);
-                    if (accColorClass === 'acc-blue') { color = '#1C84F5'; } else if (accColorClass === 'acc-red') { color = '#dc2626'; }
-                    renderGroup(acc.displayName, groupedWindows.accounts[acc.id], color);
+                    const accColor = acc.color || (accounts.indexOf(acc) === 1 ? '#dc2626' : '#1C84F5');
+                    renderGroup(acc.displayName, groupedWindows.accounts[acc.id], accColor);
                 }
             }
 
@@ -1638,9 +2010,20 @@
 
         // 初期化してから実行
         initKaronode().then(() => {
+            // アニメーション設定の適用
+            if (localStorage.getItem('karonode_animations_enabled') === 'false') {
+                document.body.classList.add('animations-disabled');
+            }
+            
+            // ダークテーマの適用
+            if (localStorage.getItem('karonode_dark_mode') === 'true') {
+                document.body.classList.add('dark-mode');
+            }
+            
             loadUserInfo();
             syncTaskbar();
             renderDesktopShortcuts();
+            updateSidebarStyle();
         });
 
         // 30秒ごとに通知をチェック
@@ -1648,7 +2031,67 @@
         pollNotifications();
     </script>
 </body>
-</html>                     lastNotificationIds[acc.id] = latest.id; 
+</html>         const newWidth = e.clientX - target.offsetLeft;
+                const newHeight = e.clientY - target.offsetTop;
+                // 最小サイズ制限
+                if (newWidth > 200) target.style.width = `${newWidth}px`;
+                if (newHeight > 100) target.style.height = `${newHeight}px`;
+            });
+
+            document.addEventListener('mouseup', () => {
+                isResizing = false;
+            });
+        }
+
+        // 通知ポップアップを表示する関数
+        function showNotificationToast(message, isError = false) {
+            const toast = document.createElement('div');
+            toast.className = 'notification-toast' + (isError ? ' error-toast' : '');
+            const icon = isError ? '⚠️' : '🔔';
+            toast.innerHTML = `<span style="font-size: 1.2rem;">${icon}</span> <div>${message}</div>`;
+            document.body.appendChild(toast);
+
+            // 5秒後にフェードアウトして削除
+            setTimeout(() => {
+                toast.classList.add('toast-out');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // IDから投稿詳細を開くヘルパー
+        async function openPostById(id, accountId) {
+            try {
+                // 304エラー（キャッシュ）を回避するためにタイムスタンプを付与
+                const res = await fetch(`/api/posts/${id}?t=${Date.now()}`, { accountId });
+                const data = await safeJson(res);
+                if (data.error) {
+                    if (data.error === "リクエストが多すぎます") showNotificationToast("リクエストが多すぎます。少し時間を置いてからお試しください。", true);
+                    return;
+                }
+                // APIの戻り値が { post: {...}, user: {...} } のようにネストされている場合に対応
+                const postObj = data.post || data;
+                const userObj = postObj.user || postObj.author || data.user || {};
+                openPostDetail(postObj, userObj.displayName || 'Unknown', userObj.username || 'unknown', accounts.find(a => String(a.id) === String(accountId)));
+            } catch (e) { console.error('Failed to open post from notification:', e); }
+        }
+
+        let lastNotificationIds = {}; // 各アカウントの最新通知IDを個別に追跡
+        // 新着通知をチェックするポーリング関数
+        async function pollNotifications() {
+            for (const acc of accounts) {
+                try {
+                    const response = await fetch(`/api/notifications?t=${Date.now()}`, { accountId: acc.id });
+                    const data = await safeJson(response);
+                    
+                    if (data.error) continue;
+
+                    const notifications = data.notifications || [];
+                    if (notifications.length > 0) {
+                        const latest = notifications[0];
+                        
+                        // 初回チェック時はIDを保存するだけでポップアップは出さない
+                        if (lastNotificationIds[acc.id] === undefined) { 
+                            lastNotificationIds[acc.id] = latest.id; 
                             continue; 
                         }
                         
